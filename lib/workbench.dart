@@ -44,6 +44,7 @@ import 'extensions/theme_extensions.dart';
 // fork: the project's chats in Cursor's layout (docs/fork.md).
 import 'ide/cursor_layout/agents_bar.dart';
 import 'plan/plan_sessions.dart';
+import 'plan/plan_view.dart' show planPageRequest;
 import 'ide/editor_minimap_setting.dart';
 import 'ide/editor_word_wrap.dart';
 import 'ide/git/git_model.dart' show ideWorktreeOf;
@@ -4419,7 +4420,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
           // From the conversation: the file alone, its list out of the way.
           : (request) => _sidePanel.open(
               thread.session,
-              _agentChangeIn(thread.session, request),
+              // fork: a plan's file on its plan's page (lib/plan/).
+              _agentChangeIn(thread.session, planPageRequest(request)),
               listAway: true,
             ),
       inPanel: !embedded,

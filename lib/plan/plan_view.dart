@@ -16,6 +16,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:yaml/yaml.dart';
 
 import '../chat/chat_session.dart';
+import '../chat/side_panel/file_open.dart';
 import '../chat/widgets/hover_builder.dart';
 import '../chat/widgets/tool_call_row.dart'
     show todoDoingIcon, todoDoneIcon, todoOpenIcon;
@@ -625,4 +626,23 @@ class _TodoRow extends StatelessWidget {
     };
     return hint == null ? icon : IdeHover(message: hint, child: icon);
   }
+}
+
+/// [request] for a plan's file, opened from a link in the conversation, as
+/// its plan's page opens it; any other as it is (its changes, or a file
+/// asked for as a file).
+FileOpenRequest planPageRequest(FileOpenRequest request) {
+  if (request.plan ||
+      request.diff ||
+      request.agentChange ||
+      !PlanPreview.isPlan(request.path)) {
+    return request;
+  }
+  return FileOpenRequest(
+    request.path,
+    range: request.range,
+    plan: true,
+    local: request.local,
+    readOnly: request.readOnly,
+  );
 }
