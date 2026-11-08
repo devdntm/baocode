@@ -40,6 +40,20 @@ class ForkStrings {
   String get sidebarByRecent => _t('By recency', '按时间段');
   String get sidebarLast7Days => _t('Last 7 days', '最近 7 天');
   String get sidebarLast30Days => _t('Last 30 days', '最近 30 天');
+
+  // The plan's view (lib/plan/).
+  String get planTodos => _t('To-dos', '待办');
+  String planProgress(int done, int total) =>
+      _t('$done of $total', '$done / $total');
+  String get planRunAll => _t('Run all', '全部运行');
+  String planRunSelected(int count) =>
+      _t('Run selected ($count)', '运行所选（$count）');
+  String get planRun => _t('Run', '运行');
+  String get planRunHint => _t('Have the agent do this to-do', '让代理完成这项待办');
+  String get planSelect => _t('Select', '选择');
+  String get planQueued => _t('Queued', '已排队');
+  String get planRunning => _t('In progress', '进行中');
+  String get planDone => _t('Done', '已完成');
 }
 
 extension ForkStringsContext on BuildContext {

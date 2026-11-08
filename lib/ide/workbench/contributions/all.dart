@@ -3,6 +3,7 @@
 
 // fork: the fork's contributions (docs/fork.md).
 import '../../cursor_layout/layout_contribution.dart';
+import '../../../plan/plan_contribution.dart';
 import '../contributions.dart';
 import '../services.dart';
 import 'debug.dart';
@@ -42,8 +43,9 @@ List<WorkbenchContribution> createWorkbenchContributions(
   EditorCommandsContribution(services),
   WindowContribution(services),
   ExtensionsContribution(services),
-  // fork: Toggle Cursor Layout.
+  // fork: Toggle Cursor Layout; a plan's file as Cursor shows it.
   CursorLayoutContribution(services),
+  PlanContribution(services),
   // Last: the text editor's own keys are asked after every other's.
   FocusKeysContribution(services),
 ];

@@ -54,6 +54,8 @@ import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
 import '../../theme/material_file_icons.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
+// fork: a plan's to-dos over it (docs/fork.md).
+import '../../plan/plan_view.dart';
 import '../../usage/ui/conversation_usage_view.dart';
 import '../../usage/usage_ledger.dart';
 import '../chat_session.dart';
@@ -1050,7 +1052,14 @@ class AgentSidePanelView extends StatelessWidget {
           ),
         ],
       ),
-      Expanded(child: _filePreview(context, plan, plan: true)),
+      // fork: its to-dos over it, as Cursor shows a plan (lib/plan/).
+      Expanded(
+        child: PlanView(
+          path: plan.path,
+          session: session,
+          body: _filePreview(context, plan, plan: true),
+        ),
+      ),
     ],
   );
 

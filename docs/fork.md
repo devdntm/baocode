@@ -79,14 +79,15 @@ cd - && git worktree remove --force ../baocode-merge-check
 
 | Файл | Что подключает |
 | --- | --- |
-| `lib/ide/workbench/contributions/all.dart` | `CursorLayoutContribution`: команда View: Toggle Cursor Layout |
+| `lib/ide/workbench/contributions/all.dart` | `CursorLayoutContribution` (Toggle Cursor Layout, Toggle Chats, `CursorLayoutService`) и `PlanContribution` (вид плана в редакторе IDE) |
 | `lib/settings/pages/general_page.dart` | строка `workbench.ide.layout` первой в группе IDE |
 | `lib/ide/ide_workbench.dart` | параметр `agents` (список чатов) и выбор сетки: `CursorWorkbenchGrid` при `workbench.ide.layout: cursor` |
 | `lib/ide/workbench/parts/activity_bar.dart` | параметр `axis`: иконки видов строкой над сайдбаром (`_row`); вертикальный код не тронут |
 | `lib/ide/ide_layout.dart` | `IdeLayoutToggle(mirrored:)`: иконки сайдбара и чата меняются сторонами |
 | `lib/ide/workbench/parts/title_bar.dart` | в раскладке Cursor тумблер списка чатов и тумблер чата слева, сайдбара справа |
 | `lib/sidebar/sidebar.dart` | `SidebarGrouping.recent` (Pinned / Today / Last 7 days / Last 30 days / Older); параметры `project` (чаты одного проекта, без имени проекта в строках и без Open Project) и `grouping` (фиксированная группировка, без меню By …) |
-| `lib/workbench.dart` | `_ideAgentsBar`: список чатов проекта (`IdeAgentsBar`) для `IdeWorkbench.agents` |
+| `lib/workbench.dart` | `_ideAgentsBar`: список чатов проекта (`IdeAgentsBar`) для `IdeWorkbench.agents`; `PlanSessions.of = _planSession`: в какой беседе запускать задачи плана |
+| `lib/chat/side_panel/side_panel_view.dart` | `_planPage`: `PlanView` вокруг `_filePreview` плана |
 
 Колонка редактора с панелью в
 [`lib/ide/cursor_layout/cursor_grid.dart`](../lib/ide/cursor_layout/cursor_grid.dart)
@@ -177,10 +178,33 @@ tool/dev_app/build_dev_app.sh --skip-build # поставить то, что у�
   BaoCode.
 - Сборка подписана ad hoc и открывается только на этой машине.
 
+## Вид плана
+
+План (файл в папке `plans`, `ClaudeTranslator.isPlanPath`) показывается как в
+Cursor ([`lib/plan/plan_view.dart`](../lib/plan/plan_view.dart)): заголовок и
+«2 of 5», Build пока план ждёт одобрения, Run all после; задачи из `## Задачи` /
+`## Tasks` / `## To-dos` со статусами (открыта, в очереди, выполняется, готова),
+Run у каждой и запуск выбранных. Под ними — сам план, как его показывает место:
+
+- в боковой панели чата — тот же предпросмотр файла, что и раньше (с правкой и
+  Build);
+- в редакторе IDE — предпросмотр markdown (`PlanContribution`, панель редактора
+  с приоритетом выше предпросмотра). Исходник плана — обычный текстовый редактор,
+  без задач сверху.
+
+Задачи отправляются в беседу, которая написала план, иначе в чат IDE этой папки
+(новый, если его нет): `/cursor-plan:todos id1 id2 <путь>`, если у агента есть
+эта команда, иначе шаблоном Cursor с просьбой отмечать `[x]` в файле. Файл
+перечитывается раз в секунду, так что отметки агента видны сразу. Читается
+только локальный файл: план беседы на SSH-хосте показывается без задач.
+
+В отличие от плана, вид не регистрируется через `FileViews`: так файл плана
+сохранил бы свой редактор, но потерял бы модель документа IDE (правку,
+несохранённые изменения, сохранение).
+
 ## Мод `/plan-pane`
 
-После того как появится вид плана (`lib/plan/`), мод `plan-pane` не нужен: он
-выводит задачи текстом в чат. Это плагин `plan-pane@arseniy-local` из
+С видом плана мод `plan-pane` не нужен: он выводит задачи текстом в чат. Это плагин `plan-pane@arseniy-local` из
 `~/.claude/local-marketplace`. Отключить его: `/plugin` → `plan-pane` → Disable,
 или поставить `false` у `"plan-pane@arseniy-local"` в `enabledPlugins` файла
 `~/.claude/settings.json`.

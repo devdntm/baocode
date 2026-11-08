@@ -43,6 +43,7 @@ import 'customize/customize_view.dart';
 import 'extensions/theme_extensions.dart';
 // fork: the project's chats in Cursor's layout (docs/fork.md).
 import 'ide/cursor_layout/agents_bar.dart';
+import 'plan/plan_sessions.dart';
 import 'ide/editor_minimap_setting.dart';
 import 'ide/editor_word_wrap.dart';
 import 'ide/git/git_model.dart' show ideWorktreeOf;
@@ -611,6 +612,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       }
       // A web page a chat links to opens in the browser.
       FileViews.registerOpener(webPageOpener);
+      // fork: where a plan's to-dos run (lib/plan/plan_sessions.dart).
+      PlanSessions.of = _planSession;
       // The user's browsers, for agents (see browser_bridge.dart).
       unawaited(BrowserTools.start());
       // Pictures, for agents, while an image model is turned on.
@@ -891,6 +894,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     if (_main) {
       OpenRequests.stop();
       _workspace.removeListener(_syncRecentMenu);
+      // fork: see initState.
+      if (PlanSessions.of == _planSession) PlanSessions.of = null;
     }
     widget.settings?.files?.changes.removeListener(_settingsFilesChanged);
     _notifications.dispose();
@@ -2997,6 +3002,27 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       updates: widget.settings?.updates?.service,
       onUpdate: _restartToUpdate,
     );
+  }
+
+  // fork: the conversation that wrote the plan at [path], else [folder]'s
+  // IDE chat, made where [create] and there is none (lib/plan/). One not
+  // open is not opened but to run in.
+  ChatSession? _planSession(
+    String path, {
+    String? folder,
+    required bool create,
+  }) {
+    for (final thread in _workspace.threads) {
+      if (thread.isOpen && thread.session.plan?.path == path) {
+        return thread.session;
+      }
+    }
+    if (folder == null) return null;
+    final chat =
+        _workspace.ideChat(folder) ??
+        (create ? _workspace.newIdeChat(folder) : null);
+    if (chat == null || (!create && !chat.isOpen)) return null;
+    return chat.session;
   }
 
   /// The conversations whose changes [path]'s IDE shows in its files: its
