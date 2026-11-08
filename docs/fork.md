@@ -81,6 +81,22 @@ cd - && git worktree remove --force ../baocode-merge-check
 | --- | --- |
 | `lib/ide/workbench/contributions/all.dart` | `CursorLayoutContribution`: команда View: Toggle Cursor Layout |
 | `lib/settings/pages/general_page.dart` | строка `workbench.ide.layout` первой в группе IDE |
+| `lib/ide/ide_workbench.dart` | параметр `agents` (список чатов) и выбор сетки: `CursorWorkbenchGrid` при `workbench.ide.layout: cursor` |
+| `lib/ide/workbench/parts/activity_bar.dart` | параметр `axis`: иконки видов строкой над сайдбаром (`_row`); вертикальный код не тронут |
+| `lib/ide/ide_layout.dart` | `IdeLayoutToggle(mirrored:)`: иконки сайдбара и чата меняются сторонами |
+| `lib/ide/workbench/parts/title_bar.dart` | в раскладке Cursor тумблер чата слева, сайдбара справа |
+
+Колонка редактора с панелью в
+[`lib/ide/cursor_layout/cursor_grid.dart`](../lib/ide/cursor_layout/cursor_grid.dart)
+(`_editorColumn`, `_panelSlot`, `_dragPanel`, `_dragTo`) скопирована из
+`lib/ide/workbench/parts/grid.dart`, где она приватная. При слиянии upstream
+сверяй её с оригиналом: `git diff ORIG_HEAD -- lib/ide/workbench/parts/grid.dart`.
+
+Раскладка Cursor пока зеркалит тумблеры только в заголовке macOS
+(`title_bar.dart`); заголовок Windows (`window_header.dart`) не тронут.
+Ширина и видимость списка чатов хранятся в состоянии окна (`ide.views[папка]`
+в state.json) под ключами `cursor.agentsWidth` и `cursor.agents`
+(`CursorLayoutService`).
 
 ## BaoCode Dev: отдельное приложение
 

@@ -9,6 +9,7 @@ import '../../../keybindings/default_keybindings.dart';
 import '../../../keybindings/keybinding_service.dart';
 import '../../../l10n/l10n.dart';
 import '../../../theme/codicons.dart';
+import '../../ide_commands.dart' show IdeCommand;
 import '../../ide_hover.dart';
 import '../../ide_modern_ui.dart';
 import '../../services/debug_view.dart';
@@ -20,11 +21,20 @@ import '../style.dart';
 import '../views.dart';
 
 class ActivityBarPart extends StatelessWidget {
-  const ActivityBarPart({super.key, required this.sidebarShowing});
+  const ActivityBarPart({
+    super.key,
+    required this.sidebarShowing,
+    this.axis = Axis.vertical,
+  });
 
   /// Whether the side bar shows (its view's item is selected): not where
   /// it gave way to the chat.
   final bool sidebarShowing;
+
+  // fork: Cursor's layout has the items in a row over the side bar
+  // (lib/ide/cursor_layout/).
+  /// Down the window's side (VS Code's), or across over the side bar.
+  final Axis axis;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +61,7 @@ class ActivityBarPart extends StatelessWidget {
         icon: icon,
         label: label,
         badge: badge,
+        hover: axis == Axis.horizontal ? IdeHoverPosition.below : null,
         selected: selected,
         onTap: () {
           if (selected) {
@@ -110,6 +121,7 @@ class ActivityBarPart extends StatelessWidget {
     // Settings at its foot, as upstream's Manage gear: the chat's sidebar
     // has them, the IDE had no way to them but the palette.
     final settings = environment.hostCommand(openSettingsCommandId);
+    if (axis == Axis.horizontal) return _row(items, settings, keys, l10n);
     return SizedBox(
       width: IdeModernUI.activityBarWidth,
       // On the window's color, beside the cards; not islands, a part of
@@ -152,6 +164,65 @@ class ActivityBarPart extends StatelessWidget {
       ),
     );
   }
+
+  // fork: the items across, over the side bar: those past its width cut
+  // off, Settings at its end; its line under it.
+  Widget _row(
+    List<Widget> items,
+    IdeCommand? settings,
+    KeybindingService keys,
+    AppLocalizations l10n,
+  ) => SizedBox(
+    height: IdeModernUI.activityBarWidth,
+    child: IdePart(
+      color: WorkbenchStyle.islands ? null : IdeModernUI.activityBarBackground,
+      border: WorkbenchStyle.islands
+          ? null
+          : Border(bottom: IdePart.side('activityBar.border')),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: IdeModernUI.activityLane / 2,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: ClipRect(
+                child: OverflowBox(
+                  alignment: Alignment.centerLeft,
+                  minWidth: 0,
+                  maxWidth: double.infinity,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final (index, item) in items.indexed) ...[
+                        if (index > 0)
+                          const SizedBox(
+                            width: IdeModernUI.activityItemGap / 2,
+                          ),
+                        item,
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (settings != null)
+              _ActivityItem(
+                key: const ValueKey('ide.activity.settings'),
+                icon: Codicons.settingsGear,
+                label: keys.titleWithKeybinding(
+                  l10n.settingsTitle,
+                  openSettingsCommandId,
+                ),
+                selected: false,
+                onTap: settings.run,
+                hover: IdeHoverPosition.below,
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// An activity bar item: a 24px codicon in a 36px square; the active and
@@ -164,6 +235,7 @@ class _ActivityItem extends StatefulWidget {
     required this.selected,
     required this.onTap,
     this.badge,
+    this.hover,
   });
 
   final IconData icon;
@@ -173,6 +245,9 @@ class _ActivityItem extends StatefulWidget {
 
   /// A count shown on the icon (`NumberBadge`); none when null or 0.
   final int? badge;
+
+  /// Where its label shows: beside it, by default.
+  final IdeHoverPosition? hover;
 
   @override
   State<_ActivityItem> createState() => _ActivityItemState();
@@ -184,7 +259,7 @@ class _ActivityItemState extends State<_ActivityItem> {
   @override
   Widget build(BuildContext context) => IdeHover(
     message: widget.label,
-    position: IdeHoverPosition.right,
+    position: widget.hover ?? IdeHoverPosition.right,
     pointer: true,
     child: Semantics(
       button: true,

@@ -15,6 +15,9 @@ import '../../../workspace/title_bar_double_click.dart';
 import '../../ide_command_center.dart';
 import '../../ide_hover.dart';
 import '../../ide_layout.dart';
+// fork: Cursor's layout has the chat's toggle on the left.
+import '../../cursor_layout/ide_layout_style.dart';
+import '../environment.dart';
 import '../../services/chat.dart';
 import '../../services/navigation_history.dart';
 import '../../services/quick_input.dart';
@@ -39,6 +42,10 @@ class TitleBarPart extends StatelessWidget {
     final keys = KeybindingService.instance;
     final layout = options.workspace.layout;
     final l10n = context.l10n;
+    // fork: each toggle on its part's side.
+    final cursor =
+        IdeLayoutStyle.of(services.get<WorkbenchEnvironment>().settings) ==
+        IdeLayoutStyle.cursor;
     // A double click on its empty part zooms the window, as the system's
     // title bar does.
     return TitleBarDoubleClick(
@@ -49,7 +56,9 @@ class TitleBarPart extends StatelessWidget {
             SizedBox(width: AppMetrics.trafficLightsWidth + 6),
             // VS Code's layout controls; the side bar's on its side, after
             // the traffic lights.
-            IdeLayoutToggle.sidebar(layout),
+            cursor
+                ? IdeLayoutToggle.chat(layout, mirrored: true)
+                : IdeLayoutToggle.sidebar(layout),
             const SizedBox(width: 12),
             Expanded(
               child: Center(
@@ -78,7 +87,9 @@ class TitleBarPart extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IdeLayoutToggle.panel(layout),
-                  IdeLayoutToggle.chat(layout),
+                  cursor
+                      ? IdeLayoutToggle.sidebar(layout, mirrored: true)
+                      : IdeLayoutToggle.chat(layout),
                   if (options.onPinnedChanged case final onPinnedChanged?) ...[
                     const SizedBox(width: 2),
                     PinWindowButton(

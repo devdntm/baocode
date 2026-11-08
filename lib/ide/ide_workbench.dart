@@ -16,6 +16,9 @@ import '../workspace/editor_launcher.dart';
 import '../workspace/islands.dart';
 import '../workspace/window_controls.dart';
 import '../workspace/workspace.dart';
+// fork: Cursor's layout (docs/fork.md).
+import 'cursor_layout/cursor_grid.dart';
+import 'cursor_layout/ide_layout_style.dart';
 import 'extensions/ide_extensions.dart';
 import 'file_service.dart' show localizedFileError;
 import 'git/commit_message.dart';
@@ -124,10 +127,16 @@ class IdeWorkbench extends StatefulWidget implements WorkbenchOptions {
     this.onRemoveFolder,
     this.recentWorkspaceOf,
     this.agentEdits,
+    this.agents,
   });
 
   @override
   final IdeWorkspace workspace;
+
+  // fork: Cursor's layout (lib/ide/cursor_layout/).
+  /// The project's chats, left of the chat in Cursor's layout
+  /// (`workbench.ide.layout`); not shown in BaoCode's.
+  final Widget? agents;
 
   /// Whether its parts are islands, as the agents' window's (see
   /// [WorkbenchStyle.islands]).
@@ -807,7 +816,15 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                     // (each card keeps half a gap about it).
                     child: Padding(
                       padding: EdgeInsets.only(right: IdeWorkbench.gap / 2),
-                      child: WorkbenchGrid(options: widget),
+                      // fork: the grid `workbench.ide.layout` names.
+                      child:
+                          IdeLayoutStyle.of(widget.settings) ==
+                              IdeLayoutStyle.cursor
+                          ? CursorWorkbenchGrid(
+                              options: widget,
+                              agents: widget.agents,
+                            )
+                          : WorkbenchGrid(options: widget),
                     ),
                   ),
                 ],

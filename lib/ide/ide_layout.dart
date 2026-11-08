@@ -215,13 +215,21 @@ enum _Part { sidebar, panel, chat }
 /// One of VS Code's layout controls: a part's toggle, its icon showing
 /// whether the part is open.
 class IdeLayoutToggle extends StatelessWidget {
-  const IdeLayoutToggle.sidebar(this.layout, {super.key})
+  const IdeLayoutToggle.sidebar(this.layout, {super.key, this.mirrored = false})
     : _part = _Part.sidebar;
-  const IdeLayoutToggle.panel(this.layout, {super.key}) : _part = _Part.panel;
-  const IdeLayoutToggle.chat(this.layout, {super.key}) : _part = _Part.chat;
+  const IdeLayoutToggle.panel(this.layout, {super.key})
+    : _part = _Part.panel,
+      mirrored = false;
+  const IdeLayoutToggle.chat(this.layout, {super.key, this.mirrored = false})
+    : _part = _Part.chat;
 
   final IdeLayout layout;
   final _Part _part;
+
+  // fork: Cursor's layout (lib/ide/cursor_layout/).
+  /// Whether the side bar is on the right and the chat on the left: their
+  /// icons are each other's.
+  final bool mirrored;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -232,9 +240,12 @@ class IdeLayoutToggle extends StatelessWidget {
           KeybindingService.instance.labelFor(command);
       final (icon, tooltip, toggle) = switch (_part) {
         _Part.sidebar => (
-          layout.sidebarVisible
-              ? Codicons.layoutSidebarLeft
-              : Codicons.layoutSidebarLeftOff,
+          switch ((layout.sidebarVisible, mirrored)) {
+            (true, false) => Codicons.layoutSidebarLeft,
+            (false, false) => Codicons.layoutSidebarLeftOff,
+            (true, true) => Codicons.layoutSidebarRight,
+            (false, true) => Codicons.layoutSidebarRightOff,
+          },
           ideWithKeybinding(
             l10n.layoutTogglePrimarySideBar,
             keys('workbench.action.toggleSidebarVisibility'),
@@ -252,9 +263,12 @@ class IdeLayoutToggle extends StatelessWidget {
           layout.togglePanel,
         ),
         _Part.chat => (
-          layout.chat
-              ? Codicons.layoutSidebarRight
-              : Codicons.layoutSidebarRightOff,
+          switch ((layout.chat, mirrored)) {
+            (true, false) => Codicons.layoutSidebarRight,
+            (false, false) => Codicons.layoutSidebarRightOff,
+            (true, true) => Codicons.layoutSidebarLeft,
+            (false, true) => Codicons.layoutSidebarLeftOff,
+          },
           ideWithKeybinding(
             l10n.layoutToggleChat,
             keys('workbench.action.toggleAuxiliaryBar'),
