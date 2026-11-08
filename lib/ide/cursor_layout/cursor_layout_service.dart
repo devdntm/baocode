@@ -41,11 +41,12 @@ class CursorLayoutService extends ChangeNotifier
     notifyListeners();
   }
 
+  /// Only what is not the default: a window kept as upstream keeps it
+  /// where they were never changed.
   @override
   void saveState(Map<String, Object?> into) {
-    into
-      ..[agentsWidthKey] = agentsWidth
-      ..[agentsKey] = _agents;
+    if (agentsWidth != defaultAgents) into[agentsWidthKey] = agentsWidth;
+    if (!_agents) into[agentsKey] = false;
   }
 
   static const agentsWidthKey = 'cursor.agentsWidth';

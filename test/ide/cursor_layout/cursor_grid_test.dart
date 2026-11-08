@@ -256,7 +256,8 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 400));
     expect(kept?[CursorLayoutService.agentsWidthKey], 300);
-    expect(kept?[CursorLayoutService.agentsKey], isTrue);
+    // Shown, as by default: not written.
+    expect(kept?.containsKey(CursorLayoutService.agentsKey), isFalse);
 
     // Dragged past their minimum, they snap shut, and are kept so.
     await tester.drag(

@@ -132,6 +132,8 @@ flutter:
     # Emojibase's emoji, for project icons (tool/generate_emoji.mjs).
     - assets/emoji/
     - assets/network/
+    # fork: the claude-context index's helper (lib/integrations/claude_context/).
+    - tool/claude_context/bao_index.js
     # VS Code TextMate grammars and color themes (tool/generate_textmate_assets.mjs).
 
   # VS Code's icon font (tool/generate_codicons.mjs; lib/theme/codicons.dart).

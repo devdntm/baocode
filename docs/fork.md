@@ -79,13 +79,13 @@ cd - && git worktree remove --force ../baocode-merge-check
 
 | Файл | Что подключает |
 | --- | --- |
-| `lib/ide/workbench/contributions/all.dart` | `CursorLayoutContribution` (Toggle Cursor Layout, Toggle Chats, `CursorLayoutService`) и `PlanContribution` (вид плана в редакторе IDE) |
+| `lib/ide/workbench/contributions/all.dart` | `CursorLayoutContribution` (Toggle Cursor Layout, Toggle Chats, `CursorLayoutService`), `PlanContribution` (вид плана в редакторе IDE), `ClaudeContextContribution` (индекс в статус-баре) |
 | `lib/settings/pages/general_page.dart` | строка `workbench.ide.layout` первой в группе IDE |
 | `lib/ide/ide_workbench.dart` | параметр `agents` (список чатов) и выбор сетки: `CursorWorkbenchGrid` при `workbench.ide.layout: cursor` |
 | `lib/ide/workbench/parts/activity_bar.dart` | параметр `axis`: иконки видов строкой над сайдбаром (`_row`); вертикальный код не тронут |
 | `lib/ide/ide_layout.dart` | `IdeLayoutToggle(mirrored:)`: иконки сайдбара и чата меняются сторонами |
 | `lib/ide/workbench/parts/title_bar.dart` | в раскладке Cursor тумблер списка чатов и тумблер чата слева, сайдбара справа |
-| `lib/sidebar/sidebar.dart` | `SidebarGrouping.recent` (Pinned / Today / Last 7 days / Last 30 days / Older); параметры `project` (чаты одного проекта, без имени проекта в строках и без Open Project) и `grouping` (фиксированная группировка, без меню By …) |
+| `lib/sidebar/sidebar.dart` | `Sidebar.projectMenuExtra` (пункты форка в меню проекта: индекс claude-context); `SidebarGrouping.recent` (Pinned / Today / Last 7 days / Last 30 days / Older); параметры `project` (чаты одного проекта, без имени проекта в строках и без Open Project) и `grouping` (фиксированная группировка, без меню By …) |
 | `lib/workbench.dart` | `_ideAgentsBar`: список чатов проекта (`IdeAgentsBar`) для `IdeWorkbench.agents`; `PlanSessions.of` / `.created`: в какой беседе запускать задачи плана и новый агент для «Build in New Agent»; `_fileLinks`: ссылка на план открывает вкладку Plan (`planPageRequest`), `keepPlan` |
 | `lib/chat/side_panel/side_panel_view.dart` | вкладка Plan есть всегда у локального проекта: `ProjectPlansPage` (список планов проекта) вокруг `_planPage`; `PlanContext` (беседа, проект) вокруг предпросмотра плана; «Save to Project» в меню вкладки плана; `tabs.plansListed` |
 | `lib/chat/side_panel/side_panel_controller.dart` | `SidePanelTabs.plansListed` (страница Plan без открытого плана), `keepPlan` (план сессии, прочитанный с историей, без показа) |
@@ -98,7 +98,7 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/kernel/claude_code/claude_code_translator.dart` | `PlanWritten` и при повторном чтении истории (`replayed: replaying`) |
 | `lib/ide/markdown/markdown_preview.dart` | `PlanPreview.footer` (задачи плана под текстом) и `PlanPreview.frontMatter` (у плана — только `overview`) |
 | `packages/bao_markdown/lib/src/editor/md_editor.dart` | параметр `footer`: виджет после строк в той же прокрутке |
-| `pubspec.yaml` | зависимость `yaml` (front matter плана) |
+| `pubspec.yaml` | зависимость `yaml` (front matter плана); ассет `tool/claude_context/bao_index.js` |
 
 Колонка редактора с панелью в
 [`lib/ide/cursor_layout/cursor_grid.dart`](../lib/ide/cursor_layout/cursor_grid.dart)
@@ -216,6 +216,22 @@ tool/dev_app/build_dev_app.sh --skip-build # поставить то, что у�
 - **В редакторе IDE** — предпросмотр markdown с задачами под текстом и строкой Build сверху (`PlanContribution`). Исходник — обычный текстовый редактор. Читается только локальный файл: план беседы на SSH-хосте показывается без задач.
 
 Новые планы пишутся в этом формате по правилам плагина `cursor-plan@arseniy-local` (`~/.claude/local-marketplace/plugins/cursor-plan`, с версии 0.1.2): `prompts/plan-mode.md` и навык `todos`, который ставит статусы во front matter.
+
+## Индекс claude-context
+
+[`lib/integrations/claude_context/`](../lib/integrations/claude_context/) и помощник [`tool/claude_context/bao_index.js`](../tool/claude_context/bao_index.js) (в приложении — ассет, копируется в `<data>/cache/claude-context/`).
+
+- **Помощник.**
+  - `check` считает индекс прямо в Milvus и сверяет с merkle-снимком: чанки, файлы в индексе и в проекте, недостающие по папкам, статус из `mcp-codebase-snapshot.json`. `get_indexing_status` не вызывается: он врёт.
+  - `index [--force]` запускает сервер claude-context дочерним процессом с командой и окружением из `mcpServers`, просит `index_codebase` по MCP-stdio и держит его до честного `completed`.
+  - `clear` вызывает `clear_index`.
+
+  С `--json` каждая строка вывода — событие. Запускается через `node` сервера; процесс записан в `state/claude-context-processes.json`, так что после падения BaoCode его остаток будет завершён.
+- **Где видно.**
+  - Статус-бар IDE: «Index 2488/2488», при индексации — проценты. По клику — меню: сколько проиндексировано, недостающие папки, Index, Reindex All… (с подтверждением), Check.
+  - Меню проекта в сайдбаре режима чата: «Index for Search» с состоянием и «Reindex All…».
+- **«Index interrupted»:** снапшот говорит `indexing`, а сервера нет. Нужна полная переиндексация.
+- **Под `flutter test`** индекс не трогается (`ClaudeContextIndex.enabled`): иначе тесты читали бы настоящий `~/.claude.json` и запускали node.
 
 ## Мод `/plan-pane`
 

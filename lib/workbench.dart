@@ -44,6 +44,8 @@ import 'extensions/theme_extensions.dart';
 // fork: the project's chats in Cursor's layout (docs/fork.md).
 import 'ide/cursor_layout/agents_bar.dart';
 import 'plan/plan_sessions.dart';
+import 'integrations/claude_context/claude_context_ui.dart'
+    show claudeContextProjectItems, findClaudeContextServer;
 import 'plan/plan_view.dart' show planPageRequest;
 import 'ide/editor_minimap_setting.dart';
 import 'ide/editor_word_wrap.dart';
@@ -616,6 +618,9 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       // fork: where a plan's to-dos run (lib/plan/plan_sessions.dart).
       PlanSessions.of = _planSession;
       PlanSessions.created = _newPlanSession;
+      // fork: the claude-context index in the projects' menus.
+      Sidebar.projectMenuExtra = claudeContextProjectItems;
+      unawaited(findClaudeContextServer(widget.customizations));
       // The user's browsers, for agents (see browser_bridge.dart).
       unawaited(BrowserTools.start());
       // Pictures, for agents, while an image model is turned on.

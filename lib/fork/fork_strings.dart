@@ -83,6 +83,42 @@ class ForkStrings {
         'saved to .cursor/plans, show here.',
     '此项目还没有计划。代理在此写的计划以及保存到 .cursor/plans 的计划会显示在这里。',
   );
+
+  // The claude-context index (lib/integrations/claude_context/).
+  String get indexChecking => _t('Index…', '索引…');
+  String indexFiles(int indexed, int total) =>
+      _t('Index $indexed/$total', '索引 $indexed/$total');
+  String indexRunning(String share) =>
+      _t('Indexing $share', '正在索引 $share');
+  String get indexNotIndexed => _t('Not indexed', '未索引');
+  String get indexInterrupted => _t('Index interrupted', '索引已中断');
+  String get indexFailed => _t('Index error', '索引出错');
+  String get indexTooltip => _t(
+    'claude-context: what of the project is indexed for semantic search',
+    'claude-context：项目中已为语义搜索建立索引的部分',
+  );
+  String indexSummary(int indexed, int? total, int chunks) => _t(
+    '$indexed of ${total ?? '?'} files indexed, $chunks chunks',
+    '已索引 $indexed / ${total ?? '?'} 个文件，$chunks 个片段',
+  );
+  String indexMissingIn(String dir, int count) =>
+      _t('$count missing in $dir', '$dir 中缺少 $count 个');
+  String get indexRun => _t('Index', '建立索引');
+  String get indexForce => _t('Reindex All…', '全部重建索引…');
+  String get indexCheck => _t('Check', '检查');
+  String get indexForceTitle =>
+      _t('Index the whole project again?', '重新为整个项目建立索引？');
+  String get indexForceDetail => _t(
+    'Its index is dropped and made again from every file: a large project '
+        'takes minutes (about 12 chunks a second).',
+    '将删除现有索引并从所有文件重新建立：大型项目需要数分钟（约每秒 12 个片段）。',
+  );
+  String get indexProject => _t('Index for Search', '为搜索建立索引');
+  String get indexInterruptedHint => _t(
+    'The server indexing it stopped before it was done: index it again, all '
+        'of it.',
+    '建立索引的服务器在完成前已停止：请重新为整个项目建立索引。',
+  );
 }
 
 extension ForkStringsContext on BuildContext {

@@ -253,6 +253,11 @@ class Sidebar extends StatefulWidget {
   /// default the workspace creates it.
   final ValueChanged<Project?>? onNewAgent;
 
+  // fork: what the fork adds to a project's menu (the claude-context
+  // index, lib/integrations/claude_context/).
+  static List<SidebarMenuItem> Function(BuildContext context, Project project)?
+  projectMenuExtra;
+
   /// Opens a project's folder in an app (a project's menu); replaceable
   /// under test.
   @visibleForTesting
@@ -2118,6 +2123,8 @@ class _SidebarState extends State<Sidebar>
         icon: Icons.emoji_emotions_outlined,
         onSelected: () => _openIconPicker(project),
       ),
+      // fork: see Sidebar.projectMenuExtra.
+      ...?Sidebar.projectMenuExtra?.call(context, project),
       SidebarMenuItem(
         l10n.workspaceCopyPath,
         icon: Icons.content_copy_rounded,
