@@ -20,6 +20,7 @@ import '../theme/codicons.dart';
 import 'plan_sessions.dart';
 import 'plan_todos.dart';
 import 'plan_view.dart';
+import 'project_plans.dart';
 
 class PlanBuildBar extends StatefulWidget {
   const PlanBuildBar({
@@ -110,6 +111,13 @@ class _PlanBuildBarState extends State<PlanBuildBar> {
     runPlanTodos(session, widget.path, open, format: doc.format);
   }
 
+  /// Saved to its project, the copy shown in its place.
+  Future<void> _save(PlanContext scope, String root) async {
+    final saved = await ProjectPlans.saveToProject(widget.path, root);
+    if (!mounted) return;
+    scope.onOpenPlan?.call(saved);
+  }
+
   void _buildInNewAgent() {
     final doc = _doc;
     if (doc == null || doc.open.isEmpty) return;
@@ -133,7 +141,15 @@ class _PlanBuildBarState extends State<PlanBuildBar> {
     final fork = context.fork;
     final awaiting = session?.awaitingPlan?.path == widget.path;
     final open = _doc?.open ?? const <PlanTodo>[];
-    if (!awaiting && (!widget.always || open.isEmpty)) {
+    final scope = PlanContext.maybeOf(context);
+    final root = scope?.projectRoot;
+    // Save to Project, where it shows in a project it is not saved in.
+    final saveable =
+        _doc != null &&
+        ProjectPlans.listed(root) &&
+        !ProjectPlans.isSavedIn(widget.path, root!);
+    final inNewAgent = open.isNotEmpty && PlanSessions.created != null;
+    if (!awaiting && (!widget.always || (open.isEmpty && !saveable))) {
       return const SizedBox.shrink();
     }
     final canBuild = awaiting
@@ -152,26 +168,33 @@ class _PlanBuildBarState extends State<PlanBuildBar> {
             ),
             const SizedBox(width: 6),
           ],
-          PanelButton(
-            key: const ValueKey('plan.build'),
-            // Awaiting the user, BaoCode's Start (which builds now too).
-            label: awaiting ? l10n.planStart : fork.planBuild,
-            tooltip: awaiting ? l10n.planStartHint : fork.planBuildHint,
-            primary: true,
-            onTap: canBuild
-                ? () => _build(startMessage: l10n.planStartMessage)
-                : null,
-          ),
-          if (open.isNotEmpty && PlanSessions.created != null)
+          if (awaiting || open.isNotEmpty)
+            PanelButton(
+              key: const ValueKey('plan.build'),
+              // Awaiting the user, BaoCode's Start (which builds now too).
+              label: awaiting ? l10n.planStart : fork.planBuild,
+              tooltip: awaiting ? l10n.planStartHint : fork.planBuildHint,
+              primary: true,
+              onTap: canBuild
+                  ? () => _build(startMessage: l10n.planStartMessage)
+                  : null,
+            ),
+          if (inNewAgent || saveable)
             IdeMenuButton(
               key: const ValueKey('plan.build.more'),
               icon: Codicons.chevronDown,
               tooltip: fork.planMore,
               entries: () => [
-                IdeMenuAction(
-                  fork.planBuildInNewAgent,
-                  onSelected: _buildInNewAgent,
-                ),
+                if (inNewAgent)
+                  IdeMenuAction(
+                    fork.planBuildInNewAgent,
+                    onSelected: _buildInNewAgent,
+                  ),
+                if (saveable)
+                  IdeMenuAction(
+                    fork.planSaveToProject,
+                    onSelected: () => unawaited(_save(scope!, root)),
+                  ),
               ],
             ),
         ],

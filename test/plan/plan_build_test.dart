@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:baocode/chat/chat_models.dart';
 import 'package:baocode/chat/chat_session.dart';
@@ -12,6 +13,7 @@ import 'package:baocode/plan/plan_sessions.dart';
 import 'package:baocode/plan/plan_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 
 /// A kernel fed [events], that keeps what it is sent and whether it was
 /// told to start building.
@@ -187,6 +189,72 @@ void main() {
         matching: find.byKey(const ValueKey('plan.build')),
       ),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('Save to Project is in the arrow\'s menu, a plan with no '
+      'open to-dos too; the copy shown', (tester) async {
+    final temp = Directory.systemTemp.createTempSync('baocode-plan-save');
+    addTearDown(() => temp.deleteSync(recursive: true));
+    final root = p.join(temp.path, 'project');
+    Directory(root).createSync();
+    final plan = p.join(temp.path, '.claude', 'plans', 'q.md');
+    File(plan)
+      ..parent.createSync(recursive: true)
+      ..writeAsStringSync('# Done plan\n\n## Задачи\n\n- [x] [a] A\n');
+    PlanFiles.read = (path) async => File(path).readAsString();
+    final (session, _, _) = _session();
+    final shown = <String>[];
+    await tester.runAsync(
+      () => tester.pumpWidget(
+        MaterialApp(
+          home: Material(
+            child: Center(
+              child: PlanContext(
+                session: session,
+                projectRoot: root,
+                onOpenPlan: shown.add,
+                child: PlanStartBar(
+                  session: session,
+                  path: plan,
+                  maxPickerWidth: 180,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    for (
+      var i = 0;
+      i < 100 &&
+          find.byKey(const ValueKey('plan.build.more')).evaluate().isEmpty;
+      i++
+    ) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump();
+    }
+    // Nothing open to build: no Build, the menu all the same.
+    expect(build, findsNothing);
+    await tester.tap(find.byKey(const ValueKey('plan.build.more')));
+    await tester.pumpAndSettle();
+    expect(find.text('Build in New Agent'), findsNothing);
+    await tester.tap(find.text('Save to Project'));
+    for (var i = 0; i < 100 && shown.isEmpty; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump();
+    }
+    expect(
+      shown.single,
+      startsWith(p.join(root, '.cursor', 'plans', 'done_plan_')),
+    );
+    expect(
+      File(shown.single).readAsStringSync(),
+      contains('status: completed'),
     );
   });
 

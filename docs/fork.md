@@ -87,7 +87,7 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/ide/workbench/parts/title_bar.dart` | в раскладке Cursor тумблер списка чатов и тумблер чата слева, сайдбара справа |
 | `lib/sidebar/sidebar.dart` | `SidebarGrouping.recent` (Pinned / Today / Last 7 days / Last 30 days / Older); параметры `project` (чаты одного проекта, без имени проекта в строках и без Open Project) и `grouping` (фиксированная группировка, без меню By …) |
 | `lib/workbench.dart` | `_ideAgentsBar`: список чатов проекта (`IdeAgentsBar`) для `IdeWorkbench.agents`; `PlanSessions.of` / `.created`: в какой беседе запускать задачи плана и новый агент для «Build in New Agent»; `_fileLinks`: ссылка на план открывает вкладку Plan (`planPageRequest`), `keepPlan` |
-| `lib/chat/side_panel/side_panel_view.dart` | вкладка Plan есть всегда у локального проекта: `ProjectPlansPage` (список планов проекта) вокруг `_planPage`; `PlanContext` вокруг предпросмотра плана; «Save to Project» в меню вкладки плана; `tabs.plansListed` |
+| `lib/chat/side_panel/side_panel_view.dart` | вкладка Plan есть всегда у локального проекта: `ProjectPlansPage` (список планов проекта) вокруг `_planPage`; `PlanContext` (беседа, проект) вокруг предпросмотра плана; «Save to Project» в меню вкладки плана; `tabs.plansListed` |
 | `lib/chat/side_panel/side_panel_controller.dart` | `SidePanelTabs.plansListed` (страница Plan без открытого плана), `keepPlan` (план сессии, прочитанный с историей, без показа) |
 | `lib/chat/side_panel/file_open.dart` | `FileLinkTarget.keepPlan` |
 | `lib/chat/chat_screen.dart` | `_followPlan`: план, прочитанный с историей (`planReplayed`), кладётся во вкладку Plan без переключения на неё |
@@ -211,7 +211,7 @@ tool/dev_app/build_dev_app.sh --skip-build # поставить то, что у�
   - `.cursor/plans/*.plan.md`;
   - планы из `~/.claude/plans`, о которых упоминают транскрипты проекта.
 
-  «Save to Project» копирует план в `.cursor/plans/<заголовок>_<8 hex>.plan.md` в формате Cursor и открывает копию.
+  «Save to Project» (в меню у стрелки рядом с Build и в меню вкладки плана) копирует план в `.cursor/plans/<заголовок>_<8 hex>.plan.md` в формате Cursor и открывает копию.
 - **После перезапуска** беседа помнит свой план: `PlanWritten` отправляется и при повторном чтении истории, а вкладка Plan восстанавливается без переключения на неё. Ссылка на файл плана из текста чата открывает вкладку Plan.
 - **В редакторе IDE** — предпросмотр markdown с задачами под текстом и строкой Build сверху (`PlanContribution`). Исходник — обычный текстовый редактор. Читается только локальный файл: план беседы на SSH-хосте показывается без задач.
 
