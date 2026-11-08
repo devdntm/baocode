@@ -79,13 +79,13 @@ cd - && git worktree remove --force ../baocode-merge-check
 
 | Файл | Что подключает |
 | --- | --- |
-| `lib/ide/workbench/contributions/all.dart` | `CursorLayoutContribution` (Toggle Cursor Layout, Toggle Chats, `CursorLayoutService`), `PlanContribution` (вид плана в редакторе IDE), `ClaudeContextContribution` (индекс в статус-баре) |
+| `lib/ide/workbench/contributions/all.dart` | `CursorLayoutContribution` (Toggle Cursor Layout, Toggle Chats, `CursorLayoutService`), `PlanContribution` (вид плана в редакторе IDE), `ClaudeContextContribution` (индекс в статус-баре), `CursorImportContribution` (Import from Cursor: команда и баннер) |
 | `lib/settings/pages/general_page.dart` | строка `workbench.ide.layout` первой в группе IDE |
 | `lib/ide/ide_workbench.dart` | параметр `agents` (список чатов) и выбор сетки: `CursorWorkbenchGrid` при `workbench.ide.layout: cursor` |
 | `lib/ide/workbench/parts/activity_bar.dart` | параметр `axis`: иконки видов строкой над сайдбаром (`_row`); вертикальный код не тронут |
 | `lib/ide/ide_layout.dart` | `IdeLayoutToggle(mirrored:)`: иконки сайдбара и чата меняются сторонами |
 | `lib/ide/workbench/parts/title_bar.dart` | в раскладке Cursor тумблер списка чатов и тумблер чата слева, сайдбара справа |
-| `lib/sidebar/sidebar.dart` | `Sidebar.projectMenuExtra` (пункты форка в меню проекта: индекс claude-context); `SidebarGrouping.recent` (Pinned / Today / Last 7 days / Last 30 days / Older); параметры `project` (чаты одного проекта, без имени проекта в строках и без Open Project) и `grouping` (фиксированная группировка, без меню By …) |
+| `lib/sidebar/sidebar.dart` | `Sidebar.projectMenuExtra` (пункты форка в меню проекта: индекс claude-context, Import from Cursor…); `SidebarGrouping.recent` (Pinned / Today / Last 7 days / Last 30 days / Older); параметры `project` (чаты одного проекта, без имени проекта в строках и без Open Project) и `grouping` (фиксированная группировка, без меню By …) |
 | `lib/workbench.dart` | `_ideAgentsBar`: список чатов проекта (`IdeAgentsBar`) для `IdeWorkbench.agents`; `PlanSessions.of` / `.created`: в какой беседе запускать задачи плана и новый агент для «Build in New Agent»; `_fileLinks`: ссылка на план открывает вкладку Plan (`planPageRequest`), `keepPlan` |
 | `lib/chat/side_panel/side_panel_view.dart` | вкладка Plan есть всегда у локального проекта: `ProjectPlansPage` (список планов проекта) вокруг `_planPage`; `PlanContext` (беседа, проект) вокруг предпросмотра плана; «Save to Project» в меню вкладки плана; `tabs.plansListed` |
 | `lib/chat/side_panel/side_panel_controller.dart` | `SidePanelTabs.plansListed` (страница Plan без открытого плана), `keepPlan` (план сессии, прочитанный с историей, без показа) |
@@ -98,7 +98,7 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/kernel/claude_code/claude_code_translator.dart` | `PlanWritten` и при повторном чтении истории (`replayed: replaying`) |
 | `lib/ide/markdown/markdown_preview.dart` | `PlanPreview.footer` (задачи плана под текстом) и `PlanPreview.frontMatter` (у плана — только `overview`) |
 | `packages/bao_markdown/lib/src/editor/md_editor.dart` | параметр `footer`: виджет после строк в той же прокрутке |
-| `pubspec.yaml` | зависимость `yaml` (front matter плана); ассет `tool/claude_context/bao_index.js` |
+| `pubspec.yaml` | зависимость `yaml` (front matter плана); ассеты `tool/claude_context/bao_index.js` и `tool/cursor_import/cursor_memsearch_import.py` |
 
 Колонка редактора с панелью в
 [`lib/ide/cursor_layout/cursor_grid.dart`](../lib/ide/cursor_layout/cursor_grid.dart)
@@ -232,6 +232,27 @@ tool/dev_app/build_dev_app.sh --skip-build # поставить то, что у�
   - Меню проекта в сайдбаре режима чата: «Index for Search» с состоянием и «Reindex All…».
 - **«Index interrupted»:** снапшот говорит `indexing`, а сервера нет. Нужна полная переиндексация.
 - **Под `flutter test`** индекс не трогается (`ClaudeContextIndex.enabled`): иначе тесты читали бы настоящий `~/.claude.json` и запускали node.
+
+## Импорт из Cursor
+
+[`lib/integrations/cursor_import/`](../lib/integrations/cursor_import/). Мастер «Import from Cursor» открывается тремя способами:
+
+- уведомление IDE при открытии папки, где есть `.cursor`, `.cursorrules` или проект в `~/.cursor/projects/<путь с дефисами>`; после «Not now» для этой папки оно больше не показывается (`<data>/cache/cursor-import/put-off.json`);
+- команда палитры «Import from Cursor…»;
+- меню проекта в сайдбаре.
+
+Части выбираются галочками:
+
+- **Правила.** `.cursor/rules/**/*.mdc` и `.cursorrules` переносятся в `.claude/rules/*.md`: `globs` становятся `paths:`, `alwaysApply` и `description` убираются. Правило, которое Cursor применял «по описанию», в Claude Code будет читаться всегда — мастер это помечает. Существующие файлы не перезаписываются; текст каждого правила можно раскрыть и посмотреть до импорта.
+- **MCP.** Из `.cursor/mcp.json` в `.mcp.json` добавляются только серверы, которых там ещё нет: `${env:X}` превращается в `${X}`, у сервера с `url` без `type` ставится `http`.
+- **История в memsearch.** Скрипт [`tool/cursor_import/cursor_memsearch_import.py`](../tool/cursor_import/cursor_memsearch_import.py) (бывший `~/.claude/scripts/cursor_memsearch_import.py`, с командой `count` и `CLAUDE_BIN`) работает в три этапа:
+  - `summarize` пересказывает реплики Claude Haiku в кэш `.memsearch/cursor-import-cache`;
+  - `assemble` раскладывает пересказы по дневным журналам `.memsearch/memory`; дни, где импорт Cursor уже есть, не перезаписываются;
+  - затем `memsearch index` в коллекцию проекта (`derive-collection.sh` плагина).
+
+  Работа платная и долгая: мастер сначала показывает число реплик, затем прогресс; после закрытия мастера она продолжается. Пункт доступен, только если стоят плагин memsearch и его CLI.
+- **Темы.** Темы Cursor из `/Applications/Cursor.app/…/extensions/theme-cursor` упаковываются в `.vsix` (`ditto`) и ставятся как расширение.
+- **Клавиши.** Кнопка открывает существующий импорт клавиш из настроек (`AppSettings.showImport`, он знает Cursor).
 
 ## Мод `/plan-pane`
 

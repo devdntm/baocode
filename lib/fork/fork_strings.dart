@@ -88,8 +88,7 @@ class ForkStrings {
   String get indexChecking => _t('Index…', '索引…');
   String indexFiles(int indexed, int total) =>
       _t('Index $indexed/$total', '索引 $indexed/$total');
-  String indexRunning(String share) =>
-      _t('Indexing $share', '正在索引 $share');
+  String indexRunning(String share) => _t('Indexing $share', '正在索引 $share');
   String get indexNotIndexed => _t('Not indexed', '未索引');
   String get indexInterrupted => _t('Index interrupted', '索引已中断');
   String get indexFailed => _t('Index error', '索引出错');
@@ -118,6 +117,69 @@ class ForkStrings {
     'The server indexing it stopped before it was done: index it again, all '
         'of it.',
     '建立索引的服务器在完成前已停止：请重新为整个项目建立索引。',
+  );
+
+  // Import from Cursor (lib/integrations/cursor_import/).
+  String get cursorImportTitle => _t('Import from Cursor', '从 Cursor 导入');
+  String get cursorImportAction => _t('Import from Cursor…', '从 Cursor 导入…');
+  String get cursorImportBanner => _t(
+    'This project was used in Cursor: bring its rules, MCP servers and '
+        'conversations over?',
+    '此项目曾在 Cursor 中使用：要导入它的规则、MCP 服务器和对话吗？',
+  );
+  String get cursorImportDismiss => _t('Not now', '暂不');
+  String cursorImportRules(int count) =>
+      _t('Rules: $count → .claude/rules', '规则：$count 条 → .claude/rules');
+  String get cursorImportRuleExists => _t('exists, kept', '已存在，保留');
+  String get cursorImportRuleAlways => _t(
+    'Cursor applied it when relevant; Claude Code reads it always',
+    'Cursor 仅在相关时应用；Claude Code 始终读取',
+  );
+  String cursorImportServers(int count, String names) => _t(
+    'MCP servers: $count → .mcp.json ($names)',
+    'MCP 服务器：$count 个 → .mcp.json（$names）',
+  );
+  String cursorImportServersHad(String names) =>
+      _t('Already in .mcp.json: $names', '.mcp.json 中已有：$names');
+  String cursorImportHistory(int sessions) => _t(
+    'Conversations: $sessions → memsearch memory',
+    '对话：$sessions 个 → memsearch 记忆',
+  );
+  String cursorImportHistoryCost(int? turns) => _t(
+    turns == null
+        ? 'Counting the turns to summarize…'
+        : '$turns turns to summarize, each a call of Claude Haiku: paid, '
+              'and minutes long.',
+    turns == null
+        ? '正在统计需要总结的轮次…'
+        : '需要总结 $turns 轮，每轮调用一次 Claude Haiku：需付费，耗时数分钟。',
+  );
+  String get cursorImportHistoryDone => _t(
+    'Imported before: days that have Cursor\'s turns already are kept.',
+    '之前已导入：已含 Cursor 记录的日期会保留。',
+  );
+  String get cursorImportHistoryUnavailable =>
+      _t('Needs the memsearch plugin and its CLI.', '需要 memsearch 插件及其命令行工具。');
+  String cursorImportHistoryProgress(String stage, int done, int? total) =>
+      _t('$stage: $done/${total ?? '?'}', '$stage：$done/${total ?? '?'}');
+  String cursorImportStage(String stage) => switch (stage) {
+    'summarizing' => _t('Summarizing', '正在总结'),
+    'assembling' => _t('Writing the journals', '正在写入日志'),
+    'indexing' => _t('Indexing the memory', '正在索引记忆'),
+    'done' => _t('Done', '完成'),
+    'failed' => _t('Failed', '失败'),
+    _ => _t('Counting', '正在统计'),
+  };
+  String get cursorImportThemes => _t(
+    'Cursor\'s themes (Cursor Dark Midnight…)',
+    'Cursor 主题（Cursor Dark Midnight…）',
+  );
+  String get cursorImportKeys => _t('Keybindings…', '快捷键…');
+  String get cursorImportRun => _t('Import', '导入');
+  String get cursorImportClose => _t('Close', '关闭');
+  String cursorImportDone(int rules, int servers) => _t(
+    'Imported: $rules rules, $servers MCP servers.',
+    '已导入：$rules 条规则，$servers 个 MCP 服务器。',
   );
 }
 

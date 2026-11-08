@@ -5,6 +5,7 @@
 import '../../cursor_layout/layout_contribution.dart';
 import '../../../plan/plan_contribution.dart';
 import '../../../integrations/claude_context/claude_context_ui.dart';
+import '../../../integrations/cursor_import/cursor_import_ui.dart';
 import '../contributions.dart';
 import '../services.dart';
 import 'debug.dart';
@@ -47,8 +48,9 @@ List<WorkbenchContribution> createWorkbenchContributions(
   // fork: Toggle Cursor Layout; a plan's file as Cursor shows it.
   CursorLayoutContribution(services),
   PlanContribution(services),
-  // fork: the claude-context index in the status bar.
+  // fork: the claude-context index in the status bar; Import from Cursor.
   ClaudeContextContribution(services),
+  CursorImportContribution(services),
   // Last: the text editor's own keys are asked after every other's.
   FocusKeysContribution(services),
 ];

@@ -46,6 +46,9 @@ import 'ide/cursor_layout/agents_bar.dart';
 import 'plan/plan_sessions.dart';
 import 'integrations/claude_context/claude_context_ui.dart'
     show claudeContextProjectItems, findClaudeContextServer;
+import 'integrations/cursor_import/cursor_import_dialog.dart' show CursorImport;
+import 'integrations/cursor_import/cursor_import_ui.dart'
+    show cursorImportProjectItems;
 import 'plan/plan_view.dart' show planPageRequest;
 import 'ide/editor_minimap_setting.dart';
 import 'ide/editor_word_wrap.dart';
@@ -618,8 +621,15 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       // fork: where a plan's to-dos run (lib/plan/plan_sessions.dart).
       PlanSessions.of = _planSession;
       PlanSessions.created = _newPlanSession;
-      // fork: the claude-context index in the projects' menus.
-      Sidebar.projectMenuExtra = claudeContextProjectItems;
+      // fork: the claude-context index and Import from Cursor in the
+      // projects' menus; what the import installs and imports with.
+      Sidebar.projectMenuExtra = (context, project) => [
+        ...claudeContextProjectItems(context, project),
+        ...cursorImportProjectItems(context, project),
+      ];
+      CursorImport.themes = widget.themeExtensions;
+      CursorImport.importKeys = (context) =>
+          widget.settings?.showImport(context) ?? Future.value();
       unawaited(findClaudeContextServer(widget.customizations));
       // The user's browsers, for agents (see browser_bridge.dart).
       unawaited(BrowserTools.start());
