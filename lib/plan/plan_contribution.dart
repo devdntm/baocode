@@ -11,6 +11,7 @@ import '../ide/services/markdown_preview.dart';
 import '../ide/workbench/contributions.dart';
 import '../ide/workbench/editor_panes.dart';
 import '../ide/workbench/services.dart';
+import 'plan_build.dart';
 import 'plan_view.dart';
 
 class PlanContribution extends WorkbenchRegistrations {
@@ -22,10 +23,28 @@ class PlanContribution extends WorkbenchRegistrations {
           id: paneId,
           accepts: (doc) =>
               PlanPreview.isPlan(doc.path) && markdown.previewing(doc),
-          build: (context, doc) => PlanContext(
-            folder: services.find<IdeWorkspace>()?.root,
-            child: markdown.build(doc),
-          ),
+          build: (context, doc) {
+            final folder = services.find<IdeWorkspace>()?.root;
+            return PlanContext(
+              folder: folder,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Build over it, as over Cursor's plans.
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: PlanBuildBar(
+                      key: ValueKey(('plan.build', doc.path)),
+                      path: doc.path,
+                      folder: folder,
+                      padding: const EdgeInsets.fromLTRB(8, 6, 12, 2),
+                    ),
+                  ),
+                  Expanded(child: markdown.build(doc)),
+                ],
+              ),
+            );
+          },
           control: (doc) => switch (markdown.previewOf(doc)) {
             final preview? => _PreviewControl(preview),
             null => null,

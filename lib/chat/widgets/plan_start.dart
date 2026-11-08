@@ -4,6 +4,9 @@ import '../../l10n/l10n.dart';
 import '../chat_session.dart';
 import '../composer/session_model_picker.dart';
 import '../panels/interaction_panel.dart' show PanelButton;
+// fork: Build as Cursor's plans have it (docs/fork.md).
+import '../../plan/plan_build.dart';
+import '../../plan/plan_view.dart' show PlanPreview;
 
 /// The conversation whose plan its cards start (see [PlanStartBar]): the
 /// chat's, over its history.
@@ -48,7 +51,22 @@ class PlanStartBar extends StatelessWidget {
   final double? maxPickerWidth;
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
+  Widget build(BuildContext context) {
+    // fork: a plan's file: Build its open to-dos, before and after it is
+    // started; on its card in the history only while it awaits.
+    if (path case final path? when PlanPreview.isPlan(path)) {
+      return PlanBuildBar(
+        path: path,
+        session: session,
+        always: maxPickerWidth != null,
+        padding: padding,
+        maxPickerWidth: maxPickerWidth ?? 220,
+      );
+    }
+    return _upstream(context);
+  }
+
+  Widget _upstream(BuildContext context) => ListenableBuilder(
     listenable: session,
     builder: (context, _) {
       final plan = session.awaitingPlan;

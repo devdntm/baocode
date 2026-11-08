@@ -52,6 +52,8 @@ class ForkStrings {
   String get planUnselect => _t('Clear selection', '取消选择');
   String get planBuildInNewAgent => _t('Build in New Agent', '在新代理中构建');
   String get planBuild => _t('Build', '构建');
+  String get planBuildHint =>
+      _t('Have the agent do the open to-dos', '让代理完成未完成的待办');
   String get planNew => _t('New', '新建');
   String get planNewPlaceholder =>
       _t('A new to-do, Enter to add', '新待办，按 Enter 添加');
