@@ -46,6 +46,33 @@ cd - && git worktree remove --force ../baocode-merge-check
 - **Тесты форка** лежат рядом с фичей: `test/fork/`, `test/plan/`,
   `test/ide/cursor_layout/`, `test/integrations/`.
 
+## Окружение для сборки и тестов
+
+- **Flutter той же версии, что в CI** (`FLUTTER_VERSION` в
+  `.github/workflows/checks.yml`, сейчас 3.47.5). На этой машине он стоит
+  отдельно, в `~/flutter-3.47.5`; `flutter` в PATH старее и проект не собирает:
+
+  ```sh
+  ~/flutter-3.47.5/bin/flutter test test/fork/
+  FLUTTER=~/flutter-3.47.5/bin/flutter tool/dev_app/build_dev_app.sh
+  ```
+
+- **Rust для `packages/bao_iroh`.** Его хук сборки компилирует `rust/` через
+  `rustup` (версия из `rust/rust-toolchain.toml`) либо берёт готовую библиотеку
+  из `packages/bao_iroh/build/prebuilt/<target>/libbao_iroh.dylib`. Пока
+  `rust/` не отличается от релиза upstream (`git diff v<версия> -- packages/bao_iroh`),
+  arm64-библиотеку можно взять из установленного BaoCode той же версии:
+
+  ```sh
+  mkdir -p packages/bao_iroh/build/prebuilt/aarch64-apple-darwin
+  cp /Applications/BaoCode.app/Contents/Frameworks/bao_iroh.framework/Versions/A/bao_iroh \
+    packages/bao_iroh/build/prebuilt/aarch64-apple-darwin/libbao_iroh.dylib
+  ```
+
+  Этого хватает для `flutter test`. Релизная сборка macOS универсальная, ей
+  нужен и `x86_64-apple-darwin`, а в установленном приложении только arm64:
+  для неё нужен `rustup`.
+
 ## Точки `// fork:` в upstream-файлах
 
 Найти все: `git grep -n "// fork:" -- lib test`.
