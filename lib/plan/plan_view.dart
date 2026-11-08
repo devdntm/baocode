@@ -30,8 +30,10 @@ import '../platform/data_dir.dart' show writeFileAtomically;
 import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' show themeColors;
+import '../remote/remote_location.dart';
 import 'plan_sessions.dart';
 import 'plan_todos.dart';
+import 'project_plans.dart';
 
 /// What a plan's markdown preview has of its own.
 abstract final class PlanPreview {
@@ -58,18 +60,28 @@ class PlanContext extends InheritedWidget {
     super.key,
     this.session,
     this.folder,
+    this.projectRoot,
+    this.onOpenPlan,
     required super.child,
   });
 
   final ChatSession? session;
   final String? folder;
 
+  /// The project it is of, where Save to Project saves it; none, no Save.
+  final String? projectRoot;
+
+  /// Shows the plan at a path where this one shows (the copy saved).
+  final ValueChanged<String>? onOpenPlan;
+
   static PlanContext? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<PlanContext>();
 
   @override
   bool updateShouldNotify(PlanContext oldWidget) =>
-      session != oldWidget.session || folder != oldWidget.folder;
+      session != oldWidget.session ||
+      folder != oldWidget.folder ||
+      projectRoot != oldWidget.projectRoot;
 }
 
 /// How plans' files are read and written: the disk's, by default.
@@ -302,6 +314,25 @@ class _PlanTodosBlockState extends State<PlanTodosBlock> {
     setState(_selected.clear);
   }
 
+  /// Whether it can be saved to its project: one known, and it is not
+  /// saved there already.
+  bool _saveable(BuildContext context) {
+    final root = PlanContext.maybeOf(context)?.projectRoot;
+    return root != null &&
+        !RemoteLocation.isRemote(root) &&
+        !ProjectPlans.isSavedIn(widget.path, root);
+  }
+
+  /// Saved to its project, the copy shown in its place.
+  Future<void> _save() async {
+    final scope = PlanContext.maybeOf(context);
+    final root = scope?.projectRoot;
+    if (root == null) return;
+    final saved = await ProjectPlans.saveToProject(widget.path, root);
+    if (!mounted) return;
+    scope?.onOpenPlan?.call(saved);
+  }
+
   void _startAdding() => setState(() => _adding ??= TextEditingController());
 
   void _stopAdding() {
@@ -373,6 +404,15 @@ class _PlanTodosBlockState extends State<PlanTodosBlock> {
                     onTap: PlanSessions.created == null
                         ? null
                         : () => _runInNewAgent(picked),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                if (_saveable(context)) ...[
+                  _Button(
+                    key: const ValueKey('plan.todos.save'),
+                    icon: Codicons.save,
+                    label: fork.planSaveToProject,
+                    onTap: () => unawaited(_save()),
                   ),
                   const SizedBox(width: 6),
                 ],

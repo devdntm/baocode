@@ -130,9 +130,15 @@ class SidePanelTabs {
   /// The page that shows: [section], but the changes page for the plan's
   /// without a plan.
   SidePanelSection get shown => switch (section) {
-    SidePanelSection.plan when plan == null => SidePanelSection.changes,
+    // fork: but where the plan's page lists the project's plans.
+    SidePanelSection.plan when plan == null && !plansListed =>
+      SidePanelSection.changes,
     _ => section,
   };
+
+  // fork: whether the plan's page lists the project's plans, a plan open
+  // or not: the panel's, as it is built (lib/plan/project_plans.dart).
+  bool plansListed = false;
 
   /// The files previewed, on the files page.
   final List<SidePanelTab> files = [];

@@ -54,8 +54,10 @@ import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
 import '../../theme/material_file_icons.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
-// fork: a plan's to-dos over it (docs/fork.md).
+// fork: a plan's to-dos, the project's plans (docs/fork.md).
+import '../../fork/fork_strings.dart';
 import '../../plan/plan_view.dart';
+import '../../plan/project_plans.dart';
 import '../../usage/ui/conversation_usage_view.dart';
 import '../../usage/usage_ledger.dart';
 import '../chat_session.dart';
@@ -610,7 +612,9 @@ class AgentSidePanelView extends StatelessWidget {
       UsageLedger.current,
     ]),
     builder: (context, _) {
-      final tabs = panel.tabsOf(session);
+      final tabs = panel.tabsOf(session)
+        // fork: the plan's page lists a local project's plans.
+        ..plansListed = ProjectPlans.listed(session.root);
       // Its pages' tabs on the window's color, along its top as the
       // conversation's title bar is; the page on a card under them.
       return IslandTabbedCard(
@@ -635,7 +639,17 @@ class AgentSidePanelView extends StatelessWidget {
             key: ValueKey(('page', SidePanelSection.usage, session)),
             session: session,
           ),
-          SidePanelSection.plan => _planPage(context, tabs.plan!),
+          // fork: the project's plans beside the one open (lib/plan/).
+          SidePanelSection.plan => ProjectPlansPage(
+            root: session.root,
+            current: tabs.plan?.path,
+            onOpen: (path) =>
+                panel.open(session, FileOpenRequest(path, plan: true)),
+            child: switch (tabs.plan) {
+              final plan? => _planPage(context, plan),
+              null => null,
+            },
+          ),
           SidePanelSection.ports => switch (_portsHost(session)) {
             final host? => PortsView(
               key: ValueKey(('page', SidePanelSection.ports, host)),
@@ -1056,6 +1070,9 @@ class AgentSidePanelView extends StatelessWidget {
       Expanded(
         child: PlanContext(
           session: session,
+          projectRoot: session.root,
+          onOpenPlan: (path) =>
+              panel.open(session, FileOpenRequest(path, plan: true)),
           child: _filePreview(context, plan, plan: true),
         ),
       ),
@@ -1076,6 +1093,20 @@ class AgentSidePanelView extends StatelessWidget {
           onSelected: () => unawaited(_close(context, [plan])),
         ),
       ],
+      // fork: a copy in the project's .cursor/plans, shown (lib/plan/).
+      if (session.root case final root?
+          when local && !ProjectPlans.isSavedIn(path, root))
+        [
+          IdeMenuAction(
+            context.fork.planSaveToProject,
+            onSelected: () => unawaited(
+              ProjectPlans.saveToProject(path, root).then(
+                (saved) =>
+                    panel.open(session, FileOpenRequest(saved, plan: true)),
+              ),
+            ),
+          ),
+        ],
       [
         IdeMenuAction(
           l10n.sidePanelOpenInFiles,
@@ -1573,7 +1604,9 @@ class _SectionBar extends StatelessWidget {
       if (section != SidePanelSection.usage ||
           _usageOffered(session, picked: tabs.section))
         section,
-    if (tabs.plan != null) SidePanelSection.plan,
+    // fork: the project's plans, a plan open or not (lib/plan/).
+    if (tabs.plan != null || ProjectPlans.listed(session.root))
+      SidePanelSection.plan,
     if (_portsHost(session) != null) SidePanelSection.ports,
   ];
 

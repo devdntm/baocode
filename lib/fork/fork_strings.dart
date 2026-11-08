@@ -73,6 +73,11 @@ class ForkStrings {
   };
   String get planSaveToProject => _t('Save to Project', '保存到项目');
   String get planPlans => _t('Plans', '计划');
+  String get planNoneOpen => _t(
+    'Pick a plan at the left, or open one from the conversation.',
+    '在左侧选择一个计划，或从对话中打开。',
+  );
+  String get planSavedToProject => _t('Saved to Project', '已保存到项目');
   String get planNoPlans => _t(
     'No plans in this project yet. Plans the agent writes here, and those '
         'saved to .cursor/plans, show here.',

@@ -3,9 +3,12 @@
 // the folder's IDE chat (PlanContext). Its source is the text editor's,
 // as any markdown file's.
 
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 
 import '../ide/ide_workspace.dart';
+import '../ide/services/editors.dart';
 import '../ide/markdown/markdown_preview.dart' show IdeMarkdownPreviewState;
 import '../ide/services/markdown_preview.dart';
 import '../ide/workbench/contributions.dart';
@@ -27,6 +30,9 @@ class PlanContribution extends WorkbenchRegistrations {
             final folder = services.find<IdeWorkspace>()?.root;
             return PlanContext(
               folder: folder,
+              projectRoot: folder,
+              onOpenPlan: (path) =>
+                  unawaited(services.get<EditorService>().open(path)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
