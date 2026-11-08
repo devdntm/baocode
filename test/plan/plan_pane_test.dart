@@ -1,7 +1,6 @@
 import 'package:baocode/ide/markdown/markdown_preview.dart';
 import 'package:baocode/keybindings/keybinding_service.dart';
 import 'package:baocode/plan/plan_view.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ide/workbench/fake_files.dart';

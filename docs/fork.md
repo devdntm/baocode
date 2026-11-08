@@ -86,8 +86,19 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/ide/ide_layout.dart` | `IdeLayoutToggle(mirrored:)`: иконки сайдбара и чата меняются сторонами |
 | `lib/ide/workbench/parts/title_bar.dart` | в раскладке Cursor тумблер списка чатов и тумблер чата слева, сайдбара справа |
 | `lib/sidebar/sidebar.dart` | `SidebarGrouping.recent` (Pinned / Today / Last 7 days / Last 30 days / Older); параметры `project` (чаты одного проекта, без имени проекта в строках и без Open Project) и `grouping` (фиксированная группировка, без меню By …) |
-| `lib/workbench.dart` | `_ideAgentsBar`: список чатов проекта (`IdeAgentsBar`) для `IdeWorkbench.agents`; `PlanSessions.of = _planSession`: в какой беседе запускать задачи плана |
-| `lib/chat/side_panel/side_panel_view.dart` | `_planPage`: `PlanView` вокруг `_filePreview` плана |
+| `lib/workbench.dart` | `_ideAgentsBar`: список чатов проекта (`IdeAgentsBar`) для `IdeWorkbench.agents`; `PlanSessions.of` / `.created`: в какой беседе запускать задачи плана и новый агент для «Build in New Agent»; `_fileLinks`: ссылка на план открывает вкладку Plan (`planPageRequest`), `keepPlan` |
+| `lib/chat/side_panel/side_panel_view.dart` | вкладка Plan есть всегда у локального проекта: `ProjectPlansPage` (список планов проекта) вокруг `_planPage`; `PlanContext` вокруг предпросмотра плана; «Save to Project» в меню вкладки плана; `tabs.plansListed` |
+| `lib/chat/side_panel/side_panel_controller.dart` | `SidePanelTabs.plansListed` (страница Plan без открытого плана), `keepPlan` (план сессии, прочитанный с историей, без показа) |
+| `lib/chat/side_panel/file_open.dart` | `FileLinkTarget.keepPlan` |
+| `lib/chat/chat_screen.dart` | `_followPlan`: план, прочитанный с историей (`planReplayed`), кладётся во вкладку Plan без переключения на неё |
+| `lib/chat/chat_session.dart` | `planReplayed` |
+| `lib/chat/widgets/plan_start.dart` | для файла плана `PlanStartBar` — это `PlanBuildBar` (Build как в Cursor) |
+| `lib/chat/widgets/plan_card.dart` | последняя карточка файла плана: Build под ней, и под свёрнутой строкой отправленного на доработку плана |
+| `lib/kernel/kernel_event.dart`, `lib/kernel/transcript.dart` | `PlanWritten.replayed`, `Transcript.planReplayed` |
+| `lib/kernel/claude_code/claude_code_translator.dart` | `PlanWritten` и при повторном чтении истории (`replayed: replaying`) |
+| `lib/ide/markdown/markdown_preview.dart` | `PlanPreview.footer` (задачи плана под текстом) и `PlanPreview.frontMatter` (у плана — только `overview`) |
+| `packages/bao_markdown/lib/src/editor/md_editor.dart` | параметр `footer`: виджет после строк в той же прокрутке |
+| `pubspec.yaml` | зависимость `yaml` (front matter плана) |
 
 Колонка редактора с панелью в
 [`lib/ide/cursor_layout/cursor_grid.dart`](../lib/ide/cursor_layout/cursor_grid.dart)
@@ -180,27 +191,31 @@ tool/dev_app/build_dev_app.sh --skip-build # поставить то, что у�
 
 ## Вид плана
 
-План (файл в папке `plans`, `ClaudeTranslator.isPlanPath`) показывается как в
-Cursor ([`lib/plan/plan_view.dart`](../lib/plan/plan_view.dart)): заголовок и
-«2 of 5», Build пока план ждёт одобрения, Run all после; задачи из `## Задачи` /
-`## Tasks` / `## To-dos` со статусами (открыта, в очереди, выполняется, готова),
-Run у каждой и запуск выбранных. Под ними — сам план, как его показывает место:
+План — файл в папке `plans` (`ClaudeTranslator.isPlanPath`) или `*.plan.md` — показывается как в Cursor ([`lib/plan/`](../lib/plan/)).
 
-- в боковой панели чата — тот же предпросмотр файла, что и раньше (с правкой и
-  Build);
-- в редакторе IDE — предпросмотр markdown (`PlanContribution`, панель редактора
-  с приоритетом выше предпросмотра). Исходник плана — обычный текстовый редактор,
-  без задач сверху.
+- **Формат.** Задачи лежат во front matter, как у Cursor: `todos: [{id, content, status}]`, статусы `pending`, `in_progress`, `completed`, `cancelled` ([`plan_todos.dart`](../lib/plan/plan_todos.dart)). Старые планы с разделом `## Задачи` читаются как раньше; при первом изменении задач из интерфейса они переносятся во front matter, а раздел удаляется из текста.
+- **Задачи — в конце документа,** в той же прокрутке, что и текст (`MarkdownEditor.footer`). Блок «N To-dos»:
+  - «+ New» добавляет задачу;
+  - по клику задача выбирается, появляются «N To-dos Selected», крестик и «Build in New Agent»;
+  - по наведению — Run и меню: статус, удаление;
+  - id не показываются.
 
-Задачи отправляются в беседу, которая написала план, иначе в чат IDE этой папки
-(новый, если его нет): `/cursor-plan:todos id1 id2 <путь>`, если у агента есть
-эта команда, иначе шаблоном Cursor с просьбой отмечать `[x]` в файле. Файл
-перечитывается раз в секунду, так что отметки агента видны сразу. Читается
-только локальный файл: план беседы на SSH-хосте показывается без задач.
+  Front matter плана таблицей свойств не рисуется: видно только `overview`. Файл перечитывается раз в секунду, так что отметки агента видны сразу.
+- **Build** ([`plan_build.dart`](../lib/plan/plan_build.dart)) стоит рядом с выбором модели:
+  - пока план ждёт одобрения, кнопка называется Start, как в upstream, но одобряет план вместе с открытыми задачами;
+  - после одобрения Build отправляет открытые задачи в этот чат, стрелка рядом — «Build in New Agent».
 
-В отличие от плана, вид не регистрируется через `FileViews`: так файл плана
-сохранил бы свой редактор, но потерял бы модель документа IDE (правку,
-несохранённые изменения, сохранение).
+  Строка есть во вкладке Plan, на последней карточке плана в истории и над планом в редакторе IDE.
+- **Куда уходят задачи.** В беседу, которая написала план, иначе в чат IDE этой папки (новый, если его нет). Текст: `/cursor-plan:todos id1 id2 <путь>`, если у агента есть эта команда, иначе шаблон Cursor с просьбой ставить статусы во front matter.
+- **Планы проекта** ([`project_plans.dart`](../lib/plan/project_plans.dart)). Вкладка Plan боковой панели есть у любого локального проекта: слева список его планов, справа открытый. В список попадают:
+  - `.cursor/plans/*.plan.md`;
+  - планы из `~/.claude/plans`, о которых упоминают транскрипты проекта.
+
+  «Save to Project» копирует план в `.cursor/plans/<заголовок>_<8 hex>.plan.md` в формате Cursor и открывает копию.
+- **После перезапуска** беседа помнит свой план: `PlanWritten` отправляется и при повторном чтении истории, а вкладка Plan восстанавливается без переключения на неё. Ссылка на файл плана из текста чата открывает вкладку Plan.
+- **В редакторе IDE** — предпросмотр markdown с задачами под текстом и строкой Build сверху (`PlanContribution`). Исходник — обычный текстовый редактор. Читается только локальный файл: план беседы на SSH-хосте показывается без задач.
+
+Новые планы пишутся в этом формате по правилам плагина `cursor-plan@arseniy-local` (`~/.claude/local-marketplace/plugins/cursor-plan`, с версии 0.1.2): `prompts/plan-mode.md` и навык `todos`, который ставит статусы во front matter.
 
 ## Мод `/plan-pane`
 
