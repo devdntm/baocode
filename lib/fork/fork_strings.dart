@@ -8,6 +8,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../l10n/l10n.dart';
+import '../plan/plan_todos.dart' show PlanTodoState;
 
 /// The fork's strings in one language: each getter gives the English or
 /// the Chinese, as AppLocale's two languages.
@@ -42,18 +43,39 @@ class ForkStrings {
   String get sidebarLast30Days => _t('Last 30 days', '最近 30 天');
 
   // The plan's view (lib/plan/).
-  String get planTodos => _t('To-dos', '待办');
-  String planProgress(int done, int total) =>
-      _t('$done of $total', '$done / $total');
-  String get planRunAll => _t('Run all', '全部运行');
-  String planRunSelected(int count) =>
-      _t('Run selected ($count)', '运行所选（$count）');
+  String planTodosCount(int count) =>
+      _t(count == 1 ? '1 To-do' : '$count To-dos', '$count 项待办');
+  String planTodosSelected(int count) => _t(
+    count == 1 ? '1 To-do Selected' : '$count To-dos Selected',
+    '已选 $count 项待办',
+  );
+  String get planUnselect => _t('Clear selection', '取消选择');
+  String get planBuildInNewAgent => _t('Build in New Agent', '在新代理中构建');
+  String get planBuild => _t('Build', '构建');
+  String get planNew => _t('New', '新建');
+  String get planNewPlaceholder =>
+      _t('A new to-do, Enter to add', '新待办，按 Enter 添加');
   String get planRun => _t('Run', '运行');
   String get planRunHint => _t('Have the agent do this to-do', '让代理完成这项待办');
-  String get planSelect => _t('Select', '选择');
+  String get planMore => _t('More', '更多');
+  String get planDelete => _t('Delete', '删除');
   String get planQueued => _t('Queued', '已排队');
   String get planRunning => _t('In progress', '进行中');
   String get planDone => _t('Done', '已完成');
+  String get planCancelled => _t('Cancelled', '已取消');
+  String planState(PlanTodoState state) => switch (state) {
+    PlanTodoState.pending => _t('Pending', '待办'),
+    PlanTodoState.inProgress => _t('In progress', '进行中'),
+    PlanTodoState.completed => _t('Completed', '已完成'),
+    PlanTodoState.cancelled => _t('Cancelled', '已取消'),
+  };
+  String get planSaveToProject => _t('Save to Project', '保存到项目');
+  String get planPlans => _t('Plans', '计划');
+  String get planNoPlans => _t(
+    'No plans in this project yet. Plans the agent writes here, and those '
+        'saved to .cursor/plans, show here.',
+    '此项目还没有计划。代理在此写的计划以及保存到 .cursor/plans 的计划会显示在这里。',
+  );
 }
 
 extension ForkStringsContext on BuildContext {

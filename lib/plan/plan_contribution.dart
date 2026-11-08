@@ -1,6 +1,7 @@
 // A plan's file in the IDE's editor, as Cursor shows it (docs/fork.md):
-// its preview under its to-dos (PlanView), in place of the markdown
-// preview alone. Its source is the text editor's, as any markdown file's.
+// its markdown preview, its to-dos under its text (PlanPreview), run in
+// the folder's IDE chat (PlanContext). Its source is the text editor's,
+// as any markdown file's.
 
 import 'package:flutter/widgets.dart';
 
@@ -10,7 +11,6 @@ import '../ide/services/markdown_preview.dart';
 import '../ide/workbench/contributions.dart';
 import '../ide/workbench/editor_panes.dart';
 import '../ide/workbench/services.dart';
-import '../kernel/claude_code/claude_code_translator.dart';
 import 'plan_view.dart';
 
 class PlanContribution extends WorkbenchRegistrations {
@@ -21,13 +21,10 @@ class PlanContribution extends WorkbenchRegistrations {
         EditorPane(
           id: paneId,
           accepts: (doc) =>
-              ClaudeTranslator.isPlanPath(doc.path) && markdown.previewing(doc),
-          build: (context, doc) => PlanView(
-            key: ValueKey(('plan', doc.path)),
-            path: doc.path,
+              PlanPreview.isPlan(doc.path) && markdown.previewing(doc),
+          build: (context, doc) => PlanContext(
             folder: services.find<IdeWorkspace>()?.root,
-            showBuild: true,
-            body: markdown.build(doc),
+            child: markdown.build(doc),
           ),
           control: (doc) => switch (markdown.previewOf(doc)) {
             final preview? => _PreviewControl(preview),

@@ -614,6 +614,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       FileViews.registerOpener(webPageOpener);
       // fork: where a plan's to-dos run (lib/plan/plan_sessions.dart).
       PlanSessions.of = _planSession;
+      PlanSessions.created = _newPlanSession;
       // The user's browsers, for agents (see browser_bridge.dart).
       unawaited(BrowserTools.start());
       // Pictures, for agents, while an image model is turned on.
@@ -896,6 +897,9 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       _workspace.removeListener(_syncRecentMenu);
       // fork: see initState.
       if (PlanSessions.of == _planSession) PlanSessions.of = null;
+      if (PlanSessions.created == _newPlanSession) {
+        PlanSessions.created = null;
+      }
     }
     widget.settings?.files?.changes.removeListener(_settingsFilesChanged);
     _notifications.dispose();
@@ -3023,6 +3027,28 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         (create ? _workspace.newIdeChat(folder) : null);
     if (chat == null || (!create && !chat.isOpen)) return null;
     return chat.session;
+  }
+
+  // fork: a new conversation for the plan at [path]'s to-dos (Build in
+  // New Agent): a new chat of [folder]'s IDE, else an agent in the project
+  // of the conversation that wrote it (the current one's by default),
+  // shown.
+  ChatSession? _newPlanSession(String path, {String? folder}) {
+    if (folder != null) {
+      final thread = _workspace.newIdeChat(folder);
+      _openIdeChat(folder, thread);
+      return thread.session;
+    }
+    final writer = _workspace.threads
+        .where((thread) => thread.isOpen && thread.session.plan?.path == path)
+        .firstOrNull;
+    try {
+      final thread = _workspace.create(project: writer?.project);
+      _openAgent(thread);
+      return thread.session;
+    } on StateError {
+      return null;
+    }
   }
 
   /// The conversations whose changes [path]'s IDE shows in its files: its

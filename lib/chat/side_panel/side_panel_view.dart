@@ -1052,12 +1052,11 @@ class AgentSidePanelView extends StatelessWidget {
           ),
         ],
       ),
-      // fork: its to-dos over it, as Cursor shows a plan (lib/plan/).
+      // fork: its to-dos, under its text, run here (lib/plan/).
       Expanded(
-        child: PlanView(
-          path: plan.path,
+        child: PlanContext(
           session: session,
-          body: _filePreview(context, plan, plan: true),
+          child: _filePreview(context, plan, plan: true),
         ),
       ),
     ],

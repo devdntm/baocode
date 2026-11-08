@@ -16,6 +16,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as p;
 
+// fork: a plan's to-dos and front matter (docs/fork.md).
+import '../../plan/plan_view.dart' show PlanPreview;
 import '../../base/smooth_scroll.dart';
 import '../../chat/widgets/code_citation.dart';
 import '../../chat/widgets/markdown_math.dart';
@@ -544,6 +546,8 @@ class IdeMarkdownPreviewState extends State<IdeMarkdownPreview> {
             keyboardAppearance: themeColors.dark
                 ? Brightness.dark
                 : Brightness.light,
+            // fork: a plan's to-dos under its text (lib/plan/).
+            footer: PlanPreview.footer(context, widget.path),
           );
           return NotificationListener<ScrollEndNotification>(
             onNotification: (_) {
@@ -679,6 +683,11 @@ class _PreviewEmbeds extends MarkdownEmbeds {
     final Widget shown;
     switch (embed.kind) {
       case MdLineKind.frontMatter:
+        // fork: a plan's, its overview alone (lib/plan/).
+        if (PlanPreview.frontMatter(context, state.widget.path, embed.code)
+            case final shown?) {
+          return MdEmbedRegion(child: shown);
+        }
         // Its properties, each value on its line edited in a field (its
         // source the place for the rest); YAML they do not read as.
         if (parseFrontMatterProperties(embed.code) case final properties?) {

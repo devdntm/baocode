@@ -15,6 +15,15 @@ abstract final class PlanSessions {
   })?
   of;
 
+  /// A new conversation to run the plan at [path]'s to-dos in: an agent
+  /// in its project, or ([folder]) a new chat of that folder's IDE, shown.
+  /// Null where the app has not said how.
+  static ChatSession? Function(String path, {String? folder})? created;
+
+  /// What [created] makes; null without it.
+  static ChatSession? newSession(String path, {String? folder}) =>
+      created?.call(path, folder: folder);
+
   /// What [of] says; null without it.
   static ChatSession? find(
     String path, {

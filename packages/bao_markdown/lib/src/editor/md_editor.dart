@@ -59,6 +59,7 @@ class MarkdownEditor extends StatefulWidget {
     this.revealsLinks = true,
     this.keyboardAppearance = Brightness.light,
     this.textAlign = TextAlign.start,
+    this.footer,
   });
 
   final MarkdownController controller;
@@ -78,6 +79,10 @@ class MarkdownEditor extends StatefulWidget {
 
   /// As tall as its lines, not as the room it is given.
   final bool shrinkWrap;
+
+  // fork: a plan's to-dos under its text (lib/plan/, docs/fork.md).
+  /// Under the lines, in the scrolled view: [padding]'s bottom after it.
+  final Widget? footer;
   final ScrollPhysics? physics;
 
   /// A key, before the editor's own handling of it: handled, or not.
@@ -2387,7 +2392,10 @@ class MarkdownEditorState extends State<MarkdownEditor>
       shrinkWrap: widget.shrinkWrap,
       slivers: [
         SliverPadding(
-          padding: widget.padding,
+          // fork: with a footer, the bottom padding is after it.
+          padding: widget.footer == null
+              ? widget.padding
+              : widget.padding.copyWith(bottom: 0),
           // A jump far off (to the caret, by the scrollbar) lays out the
           // lines it lands on, not all those before them.
           sliver: _KeepTopLine(
@@ -2403,6 +2411,11 @@ class MarkdownEditorState extends State<MarkdownEditor>
             ),
           ),
         ),
+        if (widget.footer case final footer?)
+          SliverPadding(
+            padding: widget.padding.copyWith(top: 0),
+            sliver: SliverToBoxAdapter(child: footer),
+          ),
       ],
     );
     if (widget.placeholder != null && controller.length == 0) {
