@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../l10n/l10n.dart';
+// fork: Build from a plan's last card (docs/fork.md).
+import '../../plan/plan_build.dart';
 import '../../theme/app_theme.dart';
 import '../chat_models.dart';
 import '../side_panel/file_open.dart';
@@ -51,8 +53,35 @@ class PlanCard extends StatelessWidget {
     final card = item.status == PlanStatus.sentBack
         ? _folded(context, open)
         : _card(context, open);
+    // fork: sent back, the last card of its plan's file has its open
+    // to-dos to build under its line (lib/plan/plan_build.dart).
+    if (PlanStartScope.maybeOf(context) case final session?
+        when item.status == PlanStatus.sentBack && _latest(context)) {
+      return SizedBox(
+        width: double.infinity,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            card,
+            PlanBuildBar(
+              path: item.path,
+              session: session,
+              padding: const EdgeInsets.only(top: 4, bottom: 4),
+            ),
+          ],
+        ),
+      );
+    }
     return SizedBox(width: double.infinity, child: card);
   }
+
+  // fork: whether it is the last card of its plan's file in its
+  // conversation (lib/plan/plan_build.dart).
+  bool _latest(BuildContext context) =>
+      switch (PlanStartScope.maybeOf(context)) {
+        final session? => isLatestPlanCard(session, item),
+        null => false,
+      };
 
   /// Sent back: one line.
   Widget _folded(BuildContext context, VoidCallback? open) {
@@ -145,6 +174,14 @@ class PlanCard extends StatelessWidget {
               PlanStartBar(
                 session: session,
                 path: item.path,
+                padding: const EdgeInsets.only(top: 10),
+              )
+            // fork: started, its open to-dos built from its last card.
+            else if (PlanStartScope.maybeOf(context) case final scope?
+                when _latest(context))
+              PlanBuildBar(
+                path: item.path,
+                session: scope,
                 padding: const EdgeInsets.only(top: 10),
               ),
           ],

@@ -490,6 +490,12 @@ class _ChatScreenState extends State<ChatScreen>
     _session.attach();
     _session.addListener(_checkStarting);
     _planShown = _session.plan?.seq;
+    // fork: read with the history before it showed: its page kept.
+    if (_session.plan case final plan? when _session.planReplayed) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => widget.fileLinks?.keepPlan?.call(plan.path),
+      );
+    }
     _session.addListener(_followPlan);
     _session.addListener(_welcomeToModels);
     _restoreAgents();
@@ -544,6 +550,10 @@ class _ChatScreenState extends State<ChatScreen>
   void _followPlan() {
     if (_session.plan case final plan? when plan.seq != _planShown) {
       _planShown = plan.seq;
+      // fork: read with the history, its page kept, not shown.
+      if (_session.planReplayed) {
+        return widget.fileLinks?.keepPlan?.call(plan.path);
+      }
       _openFile(FileOpenRequest(plan.path, plan: true));
     }
   }

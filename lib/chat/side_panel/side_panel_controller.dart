@@ -342,6 +342,16 @@ class AgentSidePanel extends ChangeNotifier {
   SidePanelTabs tabsOf(Object conversation) =>
       _tabs[conversation] ??= SidePanelTabs();
 
+  // fork: a conversation's plan read with its history (docs/fork.md).
+  /// [path], [conversation]'s plan, on its plan's page where that has none
+  /// yet: the page not shown, the panel left as it is.
+  void keepPlan(Object conversation, String path) {
+    final tabs = tabsOf(conversation);
+    if (tabs.plan != null) return;
+    tabs.plan = SidePanelTab(FileOpenRequest(path, plan: true));
+    notifyListeners();
+  }
+
   /// [to] has [from]'s panel as it was, its tabs and its being shown: the
   /// same conversation read anew.
   void carryOver(Object from, Object to) {

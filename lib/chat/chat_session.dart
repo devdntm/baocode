@@ -620,6 +620,9 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
   /// reported at: higher each time it writes it again.
   ({String path, int seq})? get plan => _transcript.plan;
 
+  // fork: whether [plan] was read with the history, not written now.
+  bool get planReplayed => _transcript.planReplayed;
+
   /// The plan put to the user for them to start (see [startPlan]): the
   /// last round's, until a message is sent after it.
   PlanItem? get awaitingPlan {

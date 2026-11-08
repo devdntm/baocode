@@ -4429,6 +4429,10 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       openFolder: embedded
           ? null
           : (path) => _sidePanel.openFolder(thread.session, path),
+      // fork: its plan read with its history, on its plan's page.
+      keepPlan: embedded
+          ? null
+          : (path) => _sidePanel.keepPlan(thread.session, path),
       exists: _projectFileChecks[thread.project.path] ??= fileExistsIn(
         files,
         paths: paths,

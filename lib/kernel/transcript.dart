@@ -92,6 +92,9 @@ class Transcript {
   /// (higher with each writing).
   ({String path, int seq})? plan;
 
+  // fork: whether [plan] was read with the history (PlanWritten.replayed).
+  bool planReplayed = false;
+
   ContextUsage? usage;
   UsageStats? stats;
   List<KernelTask> tasks = const [];
@@ -205,8 +208,10 @@ class Transcript {
         if (_pending.remove(requestId) == null) return false;
       case FileEdited(:final change, :final turnId):
         edits.add((seq: event.seq, change: change, turnId: turnId));
-      case PlanWritten(:final path):
+      case PlanWritten(:final path, :final replayed):
         plan = (path: path, seq: event.seq);
+        // fork: see PlanWritten.replayed.
+        planReplayed = replayed;
       case ChangesReverted():
         revertedSeq = event.seq;
       case Rewound(:final index, :final itemId):

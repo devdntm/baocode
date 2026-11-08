@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:baocode/chat/chat_models.dart';
 import 'package:baocode/chat/chat_session.dart';
+import 'package:baocode/chat/widgets/plan_card.dart';
 import 'package:baocode/chat/widgets/plan_start.dart';
 import 'package:baocode/kernel/agent_kernel.dart';
 import 'package:baocode/kernel/kernel_event.dart';
@@ -143,6 +144,50 @@ void main() {
     final (session, _, _) = _session();
     await pump(tester, PlanStartBar(session: session, path: _path));
     expect(build, findsNothing);
+  });
+
+  testWidgets('a plan sent back: its last card has Build under its line; '
+      'an earlier one not', (tester) async {
+    final (session, _, live) = _session();
+    const first = PlanItem(
+      path: _path,
+      round: 1,
+      title: 'Round one',
+      status: PlanStatus.sentBack,
+    );
+    const last = PlanItem(
+      path: _path,
+      round: 2,
+      title: 'Round two',
+      status: PlanStatus.sentBack,
+    );
+    live
+      ..add(const ItemUpserted(1, 'p1', first))
+      ..add(const ItemUpserted(2, 'p2', last));
+    await pump(
+      tester,
+      PlanStartScope(
+        session: session,
+        child: const SizedBox(
+          width: 500,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              PlanCard(item: first),
+              PlanCard(item: last),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.byType(PlanBuildBar), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(PlanCard).last,
+        matching: find.byKey(const ValueKey('plan.build')),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('another file\'s bar is as it was', (tester) async {

@@ -133,9 +133,13 @@ final class FileEdited extends KernelEvent {
 /// The agent wrote its plan, the file at [path]: not a change to review,
 /// a document to show.
 final class PlanWritten extends KernelEvent {
-  const PlanWritten(super.seq, this.path);
+  const PlanWritten(super.seq, this.path, {this.replayed = false});
 
   final String path;
+
+  // fork: the plan of a conversation read again (docs/fork.md).
+  /// Read with the history, not written now: its page kept, not shown.
+  final bool replayed;
 }
 
 /// Renamed in the agent itself (Claude Code's `/rename`): the name its

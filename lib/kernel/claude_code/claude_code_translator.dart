@@ -304,7 +304,9 @@ class ClaudeTranslator {
     if (outcome != _Outcome.done) return;
     final path = _string(tool.input['file_path'])!;
     _planPath = path;
-    if (!replaying) emit(PlanWritten(nextSeq(), path));
+    // fork: read with the history too, for the conversation to have its
+    // plan's page after a restart (docs/fork.md).
+    emit(PlanWritten(nextSeq(), path, replayed: replaying));
   }
 
   /// [card] as [plan], its round over.

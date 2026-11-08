@@ -9,6 +9,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../chat/chat_models.dart';
 import '../chat/chat_session.dart';
 import '../chat/composer/session_model_picker.dart';
 import '../chat/panels/interaction_panel.dart' show PanelButton;
@@ -81,21 +82,16 @@ class _PlanBuildBarState extends State<PlanBuildBar> {
       widget.session ??
       PlanSessions.find(widget.path, folder: widget.folder, create: create);
 
-  /// The open to-dos, read anew.
-  Future<PlanDoc?> _fresh() async {
-    final text = await PlanFiles.read(widget.path);
-    return text == null ? null : PlanDoc.parse(text);
-  }
-
-  Future<void> _build({required String startMessage}) async {
-    final doc = await _fresh();
-    if (!mounted) return;
+  /// Awaiting the user, starts the plan with its open to-dos to do (as
+  /// it was last read), else as BaoCode starts it; started, has them done.
+  void _build({required String startMessage}) {
+    final doc = _doc;
     final session = _session(create: true);
     if (session == null) return;
     final open = doc?.open ?? const <PlanTodo>[];
     if (session.awaitingPlan?.path == widget.path) {
       if (!session.canStartPlan) return;
-      if (open.isEmpty) return session.startPlan(startMessage);
+      if (doc == null || open.isEmpty) return session.startPlan(startMessage);
       final hasCommand = session.commands.any(
         (command) => command.name == PlanRun.command,
       );
@@ -104,18 +100,19 @@ class _PlanBuildBarState extends State<PlanBuildBar> {
           open,
           widget.path,
           hasCommand: hasCommand,
-          format: doc!.format,
+          format: doc.format,
         ),
       );
       noteSent(widget.path, [for (final todo in open) todo.id]);
       return;
     }
-    runPlanTodos(session, widget.path, open, format: doc!.format);
+    if (doc == null) return;
+    runPlanTodos(session, widget.path, open, format: doc.format);
   }
 
-  Future<void> _buildInNewAgent() async {
-    final doc = await _fresh();
-    if (!mounted || doc == null || doc.open.isEmpty) return;
+  void _buildInNewAgent() {
+    final doc = _doc;
+    if (doc == null || doc.open.isEmpty) return;
     final session = PlanSessions.newSession(widget.path, folder: widget.folder);
     if (session == null) return;
     runPlanTodos(session, widget.path, doc.open, format: doc.format);
@@ -157,11 +154,12 @@ class _PlanBuildBarState extends State<PlanBuildBar> {
           ],
           PanelButton(
             key: const ValueKey('plan.build'),
-            label: fork.planBuild,
+            // Awaiting the user, BaoCode's Start (which builds now too).
+            label: awaiting ? l10n.planStart : fork.planBuild,
             tooltip: awaiting ? l10n.planStartHint : fork.planBuildHint,
             primary: true,
             onTap: canBuild
-                ? () => unawaited(_build(startMessage: l10n.planStartMessage))
+                ? () => _build(startMessage: l10n.planStartMessage)
                 : null,
           ),
           if (open.isNotEmpty && PlanSessions.created != null)
@@ -172,7 +170,7 @@ class _PlanBuildBarState extends State<PlanBuildBar> {
               entries: () => [
                 IdeMenuAction(
                   fork.planBuildInNewAgent,
-                  onSelected: () => unawaited(_buildInNewAgent()),
+                  onSelected: _buildInNewAgent,
                 ),
               ],
             ),
@@ -180,4 +178,18 @@ class _PlanBuildBarState extends State<PlanBuildBar> {
       ),
     );
   }
+}
+
+/// Whether [item] is the last card of its plan's file in [session]'s
+/// conversation: a plan sent back still shows whole there, its to-dos to
+/// build.
+bool isLatestPlanCard(ChatSession session, PlanItem item) {
+  if (item.path.isEmpty) return false;
+  for (var i = session.itemCount - 1; i >= 0; i--) {
+    if (session.itemAt(i) case final PlanItem plan
+        when plan.path == item.path) {
+      return identical(plan, item) || plan.round == item.round;
+    }
+  }
+  return false;
 }
