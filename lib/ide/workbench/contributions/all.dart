@@ -1,6 +1,8 @@
 // The features' contributions, made as a window is: the order is the
 // order their actions are tried in (of two with an id, the first runs).
 
+// fork: the fork's contributions (docs/fork.md).
+import '../../cursor_layout/layout_contribution.dart';
 import '../contributions.dart';
 import '../services.dart';
 import 'debug.dart';
@@ -40,6 +42,8 @@ List<WorkbenchContribution> createWorkbenchContributions(
   EditorCommandsContribution(services),
   WindowContribution(services),
   ExtensionsContribution(services),
+  // fork: Toggle Cursor Layout.
+  CursorLayoutContribution(services),
   // Last: the text editor's own keys are asked after every other's.
   FocusKeysContribution(services),
 ];

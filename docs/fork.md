@@ -79,7 +79,8 @@ cd - && git worktree remove --force ../baocode-merge-check
 
 | Файл | Что подключает |
 | --- | --- |
-| — | пока нет |
+| `lib/ide/workbench/contributions/all.dart` | `CursorLayoutContribution`: команда View: Toggle Cursor Layout |
+| `lib/settings/pages/general_page.dart` | строка `workbench.ide.layout` первой в группе IDE |
 
 ## BaoCode Dev: отдельное приложение
 

@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+// fork: workbench.ide.layout (docs/fork.md).
+import '../../fork/fork_strings.dart';
+import '../../ide/cursor_layout/ide_layout_style.dart';
 import '../../ide/explorer_excludes.dart';
 import '../../ide/ide_button.dart';
 import '../../ide/ide_menu.dart';
@@ -429,6 +432,19 @@ class GeneralSettingsPage extends StatelessWidget {
               children: [
                 SettingsCard(
                   children: [
+                    // fork: workbench.ide.layout, the IDE's first.
+                    _choiceRow(
+                      context,
+                      key: IdeLayoutStyle.settingKey,
+                      label: context.fork.ideLayoutTitle,
+                      description: context.fork.ideLayoutDescription,
+                      values: {
+                        IdeLayoutStyle.standard.value:
+                            context.fork.ideLayoutDefault,
+                        IdeLayoutStyle.cursor.value:
+                            context.fork.ideLayoutCursor,
+                      },
+                    ),
                     SettingsRow(
                       label: l10n.explorerExcludeSetting,
                       description: l10n.explorerExcludeSettingDescription,
