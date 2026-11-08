@@ -41,6 +41,8 @@ import 'customize/customization_store.dart';
 import 'customize/customizations.dart';
 import 'customize/customize_view.dart';
 import 'extensions/theme_extensions.dart';
+// fork: the project's chats in Cursor's layout (docs/fork.md).
+import 'ide/cursor_layout/agents_bar.dart';
 import 'ide/editor_minimap_setting.dart';
 import 'ide/editor_word_wrap.dart';
 import 'ide/git/git_model.dart' show ideWorktreeOf;
@@ -2944,6 +2946,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
                 // On the IDE's card for it, its tabs on the window's color.
                 ? _buildIdeChat(path)
                 : const SizedBox.shrink(),
+            // fork: the project's chats, in Cursor's layout.
+            agents: shown && path != _noFolder ? _ideAgentsBar(path) : null,
             onAddToChat: _workspace.ideChat(path) == null
                 ? null
                 : (files) => _workspace
@@ -2962,6 +2966,36 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
           ),
         ),
       ),
+    );
+  }
+
+  // fork: the project's chats left of the IDE's chat, in Cursor's layout
+  // (lib/ide/cursor_layout/agents_bar.dart). Customize and the stashes
+  // show in place of the chat's panes, as the chat's sidebar has them.
+  Widget _ideAgentsBar(String path) {
+    void inChat(VoidCallback show) {
+      _workspace.layout = WorkspaceLayout.chat;
+      show();
+    }
+
+    final stash = _ideWindow ? null : StashController.current;
+    return IdeAgentsBar(
+      workspace: _workspace,
+      folder: path,
+      project: _workspace.projectAt(path),
+      onOpen: (thread) => _openIdeChat(path, thread),
+      onNew: () => _newIdeChat(path),
+      onSearch: () => unawaited(_openPalette()),
+      onCustomize: _ideWindow || widget.customizations == null
+          ? null
+          : () => inChat(_showCustomize),
+      onStash: stash == null ? null : () => inChat(_showStash),
+      stashes: stash == null
+          ? null
+          : sidebarStashes(stash, (id) => inChat(() => _showStash(id))),
+      onOpenSettings: () => unawaited(openSettings()),
+      updates: widget.settings?.updates?.service,
+      onUpdate: _restartToUpdate,
     );
   }
 

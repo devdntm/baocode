@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:baocode/ide/cursor_layout/agents_bar.dart';
 import 'package:baocode/ide/cursor_layout/cursor_columns.dart';
 import 'package:baocode/ide/cursor_layout/cursor_grid.dart';
 import 'package:baocode/ide/cursor_layout/cursor_layout_service.dart';
@@ -13,6 +14,7 @@ import 'package:baocode/ide/terminal/terminal_instance.dart';
 import 'package:baocode/ide/workbench/parts/grid.dart';
 import 'package:baocode/keybindings/keybinding_service.dart';
 import 'package:baocode/settings/user_settings.dart';
+import 'package:baocode/sidebar/sidebar.dart';
 import 'package:baocode/theme/codicons.dart';
 import 'package:baocode/workspace/workspace.dart';
 import 'package:flutter/material.dart';
@@ -58,6 +60,7 @@ void main() {
     WidgetTester tester, {
     Size size = const Size(1600, 900),
     bool agents = true,
+    Widget? agentsBar,
     Map<String, Object?>? viewState,
     ValueChanged<Map<String, Object?>>? onViewState,
   }) async {
@@ -80,7 +83,9 @@ void main() {
           project: Project.at(testRoot),
           visible: true,
           chat: const SizedBox.expand(key: chatKey),
-          agents: agents ? const SizedBox.expand(key: _agentsKey) : null,
+          agents:
+              agentsBar ??
+              (agents ? const SizedBox.expand(key: _agentsKey) : null),
           onBack: () {},
           commitMessage: _noModel,
           settings: settings,
@@ -245,7 +250,10 @@ void main() {
       const Offset(40, 0),
     );
     await tester.pump();
-    expect(tester.getRect(_agents).width, CursorLayoutService.defaultAgents + 40);
+    expect(
+      tester.getRect(_agents).width,
+      CursorLayoutService.defaultAgents + 40,
+    );
     await tester.pump(const Duration(milliseconds: 400));
     expect(kept?[CursorLayoutService.agentsWidthKey], 300);
     expect(kept?[CursorLayoutService.agentsKey], isTrue);
@@ -302,6 +310,68 @@ void main() {
     await tester.tap(sidebarToggle);
     await tester.pump();
     expect(workspace.layout.sidebar, isFalse);
+  });
+
+  testWidgets('the chats\' toggle in the title bar and the palette hide '
+      'and show them', (tester) async {
+    await pumpCursor(tester);
+    final toggle = find.byKey(const ValueKey('cursor.agents.toggle'));
+    expect(toggle, findsOneWidget);
+    await tester.tap(toggle);
+    await tester.pump();
+    expect(tester.getRect(_agents).width, 0);
+    await tester.tap(toggle);
+    await tester.pump();
+    expect(tester.getRect(_agents).width, CursorLayoutService.defaultAgents);
+
+    tester
+        .state<IdeWorkbenchState>(find.byType(IdeWorkbench))
+        .commandsById[CursorLayoutContribution.toggleAgentsId]!
+        .invoke();
+    await tester.pump();
+    expect(tester.getRect(_agents).width, 0);
+  });
+
+  testWidgets('the project\'s chats: its agents only, by recency; one '
+      'picked opens in the IDE\'s chat, a new one is made there, and the '
+      'list folds away', (tester) async {
+    final agentsWorkspace = Workspace.mock();
+    final gateway = agentsWorkspace.threads
+        .firstWhere((thread) => thread.title == 'Rate limit per API key')
+        .project;
+    final opened = <String>[];
+    var made = 0;
+    await pumpCursor(
+      tester,
+      agentsBar: IdeAgentsBar(
+        workspace: agentsWorkspace,
+        folder: gateway.path,
+        project: gateway,
+        onOpen: (thread) => opened.add(thread.title),
+        onNew: () => made++,
+      ),
+    );
+    final bar = find.byType(IdeAgentsBar);
+    Finder inBar(Finder finder) => find.descendant(of: bar, matching: finder);
+    expect(
+      tester.widget<Sidebar>(inBar(find.byType(Sidebar))).grouping,
+      SidebarGrouping.recent,
+    );
+    expect(inBar(find.text('Rate limit per API key')), findsOneWidget);
+    expect(inBar(find.text('Optimize virtual list scrolling')), findsNothing);
+
+    await tester.tap(inBar(find.text('Rate limit per API key')));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(opened, ['Rate limit per API key']);
+    await tester.tap(inBar(find.text('New Chat')));
+    await tester.pump();
+    expect(made, 1);
+
+    // Its own fold button, under the title bar.
+    await tester.tap(inBar(find.byIcon(Codicons.layoutSidebarLeft)));
+    await tester.pump();
+    expect(tester.getRect(_agents).width, 0);
+    expect(tester.takeException(), isNull);
   });
 }
 

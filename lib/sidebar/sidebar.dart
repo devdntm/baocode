@@ -13,6 +13,8 @@ import '../chat/floating/floating_placement.dart';
 import '../chat/widgets/hover_builder.dart';
 import '../chat/widgets/inline_rename_field.dart';
 import '../chat/widgets/pixel_loader.dart';
+// fork: SidebarGrouping.recent, and the IDE's list of one project's chats.
+import '../fork/fork_strings.dart';
 import '../forge/forge_api.dart' show ForgeState;
 import '../forge/forge_ref.dart' show ForgeItemKind;
 import '../forge/forge_view.dart' show forgeStateLook;
@@ -52,7 +54,10 @@ import '../theme/svg_icons.dart';
 enum SidebarGrouping {
   project('Project', Icons.folder_outlined),
   time('Date', Icons.schedule_rounded),
-  status('Status', Icons.radio_button_checked_rounded);
+  status('Status', Icons.radio_button_checked_rounded),
+
+  // fork: Cursor's: pinned, today, the last 7 and 30 days, older.
+  recent('Recent', Icons.history_rounded);
 
   const SidebarGrouping(this.label, this.icon);
 
@@ -64,6 +69,7 @@ enum SidebarGrouping {
     project => l10n.sidebarGroupingProject,
     time => l10n.sidebarGroupingDate,
     status => l10n.sidebarGroupingStatus,
+    recent => ForkStrings.forLocale(l10n.localeName).sidebarGroupingRecent,
   };
 
   /// `By project`, as the list's heading says how it is grouped.
@@ -71,6 +77,7 @@ enum SidebarGrouping {
     project => l10n.sidebarByProject,
     time => l10n.sidebarByDate,
     status => l10n.sidebarByStatus,
+    recent => ForkStrings.forLocale(l10n.localeName).sidebarByRecent,
   };
 }
 
@@ -203,7 +210,17 @@ class Sidebar extends StatefulWidget {
     this.setup,
     this.surface,
     this.atRight = false,
+    this.project,
+    this.grouping,
   });
+
+  // fork: the IDE's list of its project's chats (lib/ide/cursor_layout/).
+  /// Only this project's agents, under no heading of its: no Open Project
+  /// row, a new agent made there.
+  final Project? project;
+
+  /// Grouped so, whatever the workspace's grouping: no By … menu.
+  final SidebarGrouping? grouping;
 
   /// Under it: [AppColors.sidebarSurface] by default; none where the
   /// window's own color is under it already.
@@ -321,6 +338,7 @@ class _SidebarState extends State<Sidebar>
   // Kept by the workspace, between runs and as the sidebar is built anew
   // (between the docked sidebar and the drawer, not built while closed).
   SidebarGrouping get _grouping =>
+      widget.grouping ??
       SidebarGrouping.values.asNameMap()[_workspace.sidebarGrouping] ??
       SidebarGrouping.project;
   bool get _showArchived => _workspace.showArchived;
@@ -895,6 +913,8 @@ class _SidebarState extends State<Sidebar>
 
   void _create([Project? project]) {
     // Where the sidebar lists: the open agent's project if it is there.
+    // fork: or the one project it lists.
+    project ??= widget.project;
     project ??= switch (_current?.project) {
       final current? when _workspace.listsHost(current.host) => current,
       _ => _workspace.sidebarProjectsHere.firstOrNull,
@@ -917,7 +937,9 @@ class _SidebarState extends State<Sidebar>
         if ((thread.archived
                 ? _workspace.listsHost(thread.project.host)
                 : _listed(thread)) &&
-            _workspace.listsInSidebar(thread))
+            _workspace.listsInSidebar(thread) &&
+            // fork: one project's.
+            (widget.project == null || thread.project == widget.project))
           thread,
     ]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     // Asides under the one each was asked beside, where that one is
@@ -994,6 +1016,30 @@ class _SidebarState extends State<Sidebar>
           ),
           _Group('older', l10n.sidebarOlder, where((t) => daysAgo(t) > 7)),
         ],
+        // fork: Cursor's, under ids of their own (each folds apart from
+        // the Date grouping's).
+        SidebarGrouping.recent => [
+          _Group(
+            'recent.today',
+            l10n.sidebarToday,
+            where((t) => daysAgo(t) <= 0),
+          ),
+          _Group(
+            'recent.week',
+            ForkStrings.forLocale(l10n.localeName).sidebarLast7Days,
+            where((t) => daysAgo(t) >= 1 && daysAgo(t) <= 7),
+          ),
+          _Group(
+            'recent.month',
+            ForkStrings.forLocale(l10n.localeName).sidebarLast30Days,
+            where((t) => daysAgo(t) > 7 && daysAgo(t) <= 30),
+          ),
+          _Group(
+            'recent.older',
+            l10n.sidebarOlder,
+            where((t) => daysAgo(t) > 30),
+          ),
+        ],
         SidebarGrouping.status => [
           _Group(
             'needsInput',
@@ -1067,6 +1113,8 @@ class _SidebarState extends State<Sidebar>
             ),
           ),
           if (switch (_workspace.sidebarHost) {
+                // fork: none where it lists one project.
+                _ when widget.project != null => null,
                 final host? when widget.onOpenFolderOn != null =>
                   () => widget.onOpenFolderOn!(host),
                 null => widget.onOpenFolder,
@@ -1160,6 +1208,27 @@ class _SidebarState extends State<Sidebar>
       return Padding(
         padding: const EdgeInsets.fromLTRB(8, 5, 8, 1),
         child: _buildSpeedHeading(),
+      );
+    }
+    // fork: a grouping given, none to choose: the heading alone.
+    if (widget.grouping != null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(14, 6, 6, 2),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                context.l10n.sidebarAgents,
+                style: TextStyle(
+                  color: AppColors.textFaint,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            ?_buildCollapseAll(),
+          ],
+        ),
       );
     }
     return Padding(
@@ -1954,7 +2023,8 @@ class _SidebarState extends State<Sidebar>
       onDeleteAll: (threads) => unawaited(_confirmDelete(threads)),
       dragThreads: () => _targetsFor(thread),
       drag: widget.drag,
-      showProject: group.project == null,
+      // fork: nor where it lists one project.
+      showProject: group.project == null && widget.project == null,
       showTime: SidebarTimes.shown.value,
       projectIcon: switch (_workspace.iconOf(thread.project)) {
         null when _workspace.workspaceOf(thread.project) != null => Icon(

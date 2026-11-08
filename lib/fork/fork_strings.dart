@@ -31,6 +31,15 @@ class ForkStrings {
   );
   String get ideLayoutDefault => _t('BaoCode', 'BaoCode');
   String get ideLayoutCursor => _t('Cursor', 'Cursor');
+
+  // The project's chats in Cursor's layout (lib/ide/cursor_layout/).
+  String get ideToggleAgents => _t('Toggle Chats', '切换聊天列表');
+
+  // SidebarGrouping.recent (lib/sidebar/sidebar.dart).
+  String get sidebarGroupingRecent => _t('Recent', '最近');
+  String get sidebarByRecent => _t('By recency', '按时间段');
+  String get sidebarLast7Days => _t('Last 7 days', '最近 7 天');
+  String get sidebarLast30Days => _t('Last 30 days', '最近 30 天');
 }
 
 extension ForkStringsContext on BuildContext {

@@ -16,6 +16,7 @@ import '../../ide_command_center.dart';
 import '../../ide_hover.dart';
 import '../../ide_layout.dart';
 // fork: Cursor's layout has the chat's toggle on the left.
+import '../../cursor_layout/agents_bar.dart';
 import '../../cursor_layout/ide_layout_style.dart';
 import '../environment.dart';
 import '../../services/chat.dart';
@@ -56,6 +57,7 @@ class TitleBarPart extends StatelessWidget {
             SizedBox(width: AppMetrics.trafficLightsWidth + 6),
             // VS Code's layout controls; the side bar's on its side, after
             // the traffic lights.
+            if (cursor) const CursorAgentsToggle(),
             cursor
                 ? IdeLayoutToggle.chat(layout, mirrored: true)
                 : IdeLayoutToggle.sidebar(layout),

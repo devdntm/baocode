@@ -45,9 +45,20 @@ class CursorLayoutContribution extends WorkbenchRegistrations {
             );
           },
         ),
+        WorkbenchAction(
+          id: toggleAgentsId,
+          category: 'View',
+          title: 'Toggle Chats',
+          precondition: (_) =>
+              IdeLayoutStyle.of(environment.settings) == IdeLayoutStyle.cursor,
+          run: (_, _) => cursor.toggleAgents(),
+        ),
       ]),
     );
   }
 
   static const toggleId = 'workbench.action.toggleCursorLayout';
+
+  /// The project's chats shown or hidden, in Cursor's layout.
+  static const toggleAgentsId = 'workbench.action.toggleCursorAgents';
 }

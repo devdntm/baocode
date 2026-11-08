@@ -84,13 +84,22 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/ide/ide_workbench.dart` | параметр `agents` (список чатов) и выбор сетки: `CursorWorkbenchGrid` при `workbench.ide.layout: cursor` |
 | `lib/ide/workbench/parts/activity_bar.dart` | параметр `axis`: иконки видов строкой над сайдбаром (`_row`); вертикальный код не тронут |
 | `lib/ide/ide_layout.dart` | `IdeLayoutToggle(mirrored:)`: иконки сайдбара и чата меняются сторонами |
-| `lib/ide/workbench/parts/title_bar.dart` | в раскладке Cursor тумблер чата слева, сайдбара справа |
+| `lib/ide/workbench/parts/title_bar.dart` | в раскладке Cursor тумблер списка чатов и тумблер чата слева, сайдбара справа |
+| `lib/sidebar/sidebar.dart` | `SidebarGrouping.recent` (Pinned / Today / Last 7 days / Last 30 days / Older); параметры `project` (чаты одного проекта, без имени проекта в строках и без Open Project) и `grouping` (фиксированная группировка, без меню By …) |
+| `lib/workbench.dart` | `_ideAgentsBar`: список чатов проекта (`IdeAgentsBar`) для `IdeWorkbench.agents` |
 
 Колонка редактора с панелью в
 [`lib/ide/cursor_layout/cursor_grid.dart`](../lib/ide/cursor_layout/cursor_grid.dart)
 (`_editorColumn`, `_panelSlot`, `_dragPanel`, `_dragTo`) скопирована из
 `lib/ide/workbench/parts/grid.dart`, где она приватная. При слиянии upstream
 сверяй её с оригиналом: `git diff ORIG_HEAD -- lib/ide/workbench/parts/grid.dart`.
+
+Группировка `recent` хранится в state.json как `"grouping": "recent"`. Сборка
+upstream такого значения не знает и показывает «By project» (`_grouping` в
+sidebar.dart откатывается к `project`), а само значение не трогает.
+
+В списке чатов IDE «Skills» и «Stash» переключают окно в режим чата и открывают
+там свою страницу: эти страницы встают на место чата.
 
 Раскладка Cursor пока зеркалит тумблеры только в заголовке macOS
 (`title_bar.dart`); заголовок Windows (`window_header.dart`) не тронут.
