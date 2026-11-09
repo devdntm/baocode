@@ -101,6 +101,12 @@ buddy "Delete :CFBundleURLTypes" 2>/dev/null || true
 # The Finder extension has BaoCode's id: a second one would stand in for
 # it.
 rm -rf "$app/Contents/PlugIns/FinderExtension.appex"
+# Its own icon, the DEV ribbon over BaoCode's (AppIcon-dev.png, its source):
+# the icns read, not the asset catalog's, which has BaoCode's.
+cp "$repo/tool/dev_app/AppIcon-dev.icns" "$app/Contents/Resources/AppIcon.icns"
+buddy "Delete :CFBundleIconName" 2>/dev/null || true
+buddy "Set :CFBundleIconFile AppIcon"
+touch "$app"
 
 say "Signing ad hoc"
 codesign --force --deep --preserve-metadata=entitlements --sign - "$app"

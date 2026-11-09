@@ -161,6 +161,10 @@ tool/dev_app/build_dev_app.sh --skip-build # поставить то, что у�
   у него тот же id, что у расширения основного BaoCode. Убирает и
   `CFBundleURLTypes`: когда схему `baocode://` заявляют два приложения, система
   выбирает любое из них;
+- ставит копии свою иконку — оригинальную с лентой DEV в углу
+  (`tool/dev_app/AppIcon-dev.icns`, исходник `AppIcon-dev.png`): кладёт её в
+  `Contents/Resources/AppIcon.icns` и убирает `CFBundleIconName`, чтобы система
+  брала её, а не иконку из каталога ассетов;
 - подписывает копию ad hoc (`codesign --force --deep --sign -`);
 - если папки `baocode-dev` ещё нет, копирует в неё всю папку `baocode`, кроме
   `state/*-processes.json` и `updates/`. Копия делается клонами APFS (`cp -c`) и
