@@ -794,6 +794,7 @@ class ComposerPickerState extends State<ComposerPicker> {
             widget.selected.iconBuilder ??
             (size, color) =>
                 Icon(widget.selected.icon, size: size, color: color),
+        iconData: widget.selected.icon,
         label: widget.label ?? widget.selected.label,
         hovered: hovered,
         open: open,
