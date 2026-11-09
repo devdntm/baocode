@@ -150,7 +150,16 @@ abstract final class AppColors {
   static Color get textMuted => _colors['descriptionForeground'];
 
   /// `disabledForeground`.
-  static Color get textFaint => _colors['disabledForeground'];
+  static Color get textFaint => switch (_colors) {
+    // fork: chat.look. A theme that sets none (Cursor's): its own text,
+    // fainter, not the registry's neutral grey (`#CCCCCC80` on a dark one).
+    final colors
+        when ChatLook.isCursor &&
+            colors.theme.getColor('disabledForeground', useDefault: false) ==
+                null =>
+      text.withValues(alpha: text.a * 0.5),
+    final colors => colors['disabledForeground'],
+  };
 
   /// The theme's own `textLink.foreground`, else its `focusBorder`: links
   /// in the theme's color, not the registry's blue, in a theme that sets

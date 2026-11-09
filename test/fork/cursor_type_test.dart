@@ -4,6 +4,7 @@ import 'package:baocode/chat/widgets/markdown_view.dart';
 import 'package:baocode/fork/cursor_look.dart';
 import 'package:baocode/theme/app_theme.dart';
 import 'package:baocode/theme/code_font.dart';
+import 'package:baocode/theme/workbench_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -84,6 +85,22 @@ void main() {
           cursor.text.merge(cursor.blank).height!,
       closeTo(CursorType.gap, 1e-9),
     );
+  });
+
+  test('faint text: a theme\'s own, else its text at half, not the '
+      'registry\'s grey', () {
+    final colors = WorkbenchThemeService.instance.colors;
+    final own = colors.theme.getColor('disabledForeground', useDefault: false);
+    final upstream = AppColors.textFaint;
+    ChatLook.current.value = ChatLook.cursor;
+    if (own == null) {
+      expect(
+        AppColors.textFaint,
+        AppColors.text.withValues(alpha: AppColors.text.a * 0.5),
+      );
+    } else {
+      expect(AppColors.textFaint, upstream);
+    }
   });
 
   testWidgets('BaoCode\'s look stays as upstream\'s', (tester) async {

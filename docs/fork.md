@@ -106,7 +106,7 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `test/theme/theme_sweep_test.dart`, `test/ide/workbench/color_theme_picker_test.dart` | 14 встроенных тем, Cursor Dark Midnight в списке |
 | `pubspec.yaml` | зависимости `yaml` (front matter плана) и `fork_scroll_momentum` (инерция трекпада); ассеты `tool/claude_context/bao_index.js` и `tool/cursor_import/cursor_memsearch_import.py` |
 | `lib/main.dart` | `ChatLook.follow` (`chat.look`), `ScrollMomentum.follow` (`workbench.scroll.momentum`), `gestureSettings` окна (порог трекпада) |
-| `lib/theme/app_theme.dart` | `buildAppTheme`: при `chat.look: cursor` текст темы с трекингом macOS (`CursorType.theme`); `codeStyle`/`uiCodeStyle` без межбуквенного интервала |
+| `lib/theme/app_theme.dart` | `buildAppTheme`: при `chat.look: cursor` текст темы с трекингом macOS (`CursorType.theme`); `codeStyle`/`uiCodeStyle` без межбуквенного интервала; `textFaint` от текста темы, где она его не задаёт |
 | `lib/chat/widgets/markdown_view.dart` | `baseStyle`/`codeStyle` Cursor; `MarkdownOptions.chat()` и `cursorLook`: отступы блоков, заголовки, жирный, списки, отступы вокруг встроенного кода |
 | `lib/chat/widgets/inline_code.dart` | плашка встроенного кода Cursor: цвет, радиус, одна на строку |
 | `lib/chat/widgets/code_citation.dart` | блок кода Cursor: фон, рамка, радиус, без заголовка (`_plain`), отступы |
@@ -304,6 +304,10 @@ CSS самого Cursor (`/Applications/Cursor.app/.../workbench.*.css`, `.rende
   неразрывные пробелы только для показа), маркер списка крупнее (`bullet`),
   10 pt над списком сразу после абзаца и под ним, 2 pt между пунктами
   (`listGap`, `itemGap`), отступ уровня 20.
+- **Бледный текст по теме.** `AppColors.textFaint` (`disabledForeground`): где
+  тема его не задаёт (Cursor Dark Midnight), — её текст на 50%, а не серый
+  `#CCCCCC80` из реестра VS Code; так выглядят зачёркнутые задачи плана,
+  пустые кружки задач и прочие бледные подписи.
 - **Как у Cursor в цвете текста:** заголовки, жирный, шапка таблицы, маркеры
   списков; маркер — крупный кружок; пункты «свободного» списка (с пустыми
   строками между ними) через 10 pt.
