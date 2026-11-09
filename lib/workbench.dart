@@ -167,6 +167,9 @@ import 'workspace/workspace_dialog.dart';
 import 'ide/host_paths.dart';
 import 'remote/local_tools.dart';
 import 'remote/port_forwards.dart';
+// fork: the browser's page (docs/fork.md).
+import 'fork/browser/browser_contribution.dart';
+import 'fork/browser/fork_browser.dart';
 
 /// The window: the agents sidebar on the left, the selected agent's chat
 /// on the right, and up to three more beside it, dragged there from the
@@ -618,6 +621,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       }
       // A web page a chat links to opens in the browser.
       FileViews.registerOpener(webPageOpener);
+      // fork: the browser's page, in an IDE's tab or this window's side
+      // panel (lib/fork/browser/).
+      ForkBrowserContribution.registerView();
+      ForkBrowser.revealInPanel = () =>
+          _showSidePanelSection(SidePanelSection.browser);
       // fork: where a plan's to-dos run (lib/plan/plan_sessions.dart).
       PlanSessions.of = _planSession;
       PlanSessions.created = _newPlanSession;
@@ -5303,6 +5311,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       SidePanelSection.terminal ||
       SidePanelSection.usage ||
       SidePanelSection.ports ||
+      // fork: the browser's page (lib/fork/browser/).
+      SidePanelSection.browser ||
       SidePanelSection.plan => null,
     };
   }

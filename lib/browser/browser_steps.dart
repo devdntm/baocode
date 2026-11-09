@@ -11,6 +11,11 @@ import '../l10n/l10n.dart';
 import '../theme/app_theme.dart';
 import '../workspace/window_controls.dart';
 import 'browser_tools.dart';
+// fork: the browser's page (docs/fork.md).
+import '../chat/side_panel/file_link_menu.dart';
+import '../fork/browser/fork_browser.dart';
+import '../fork/fork_strings.dart';
+import '../ide/ide_menu.dart';
 
 /// The browser's icon (Basil's chrome-solid), a browser step's.
 const browserIcon = 'assets/icons/chrome-solid.svg';
@@ -302,7 +307,17 @@ class BrowserStep extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        header,
+        // fork: its tab on the browser's page, from its right click, as
+        // upstream had it before 1.9.0 (lib/fork/browser/).
+        FileLinkMenuRegion(
+          menu: switch (item.input['tabId']) {
+            final int tabId
+                when item.tool != 'browser_close' && ForkBrowser.offered =>
+              _TabMenu(tabId),
+            _ => null,
+          },
+          child: header,
+        ),
         if (running && item.tool == 'browser_watch')
           const _WatchCard()
         else if (expanded && opens)
@@ -339,6 +354,25 @@ class BrowserStep extends StatelessWidget {
     }
     return StepBody(child: Text(output, style: stepMono));
   }
+}
+
+/// fork: a browser step's right click: its tab on the browser's page.
+class _TabMenu implements ChatItemMenu {
+  const _TabMenu(this.tabId);
+
+  final int tabId;
+
+  @override
+  Future<void> show(BuildContext context, Offset position) => showIdeMenu(
+    context,
+    position: position,
+    entries: [
+      IdeMenuAction(
+        context.fork.browserShowInPage,
+        onSelected: () => ForkBrowser.showAt(context, tabId),
+      ),
+    ],
+  );
 }
 
 /// What BaoCode watches the user do (see [BrowserWatching]): the task they

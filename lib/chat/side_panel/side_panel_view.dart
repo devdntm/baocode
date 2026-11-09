@@ -75,6 +75,9 @@ import '../../theme/svg_icons.dart';
 import '../../remote/remote_location.dart';
 import '../../remote/ports_view.dart';
 import 'chat_layout_picker.dart';
+// fork: the browser's page (docs/fork.md).
+import '../../fork/browser/browser_mirror.dart';
+import '../../fork/browser/fork_browser.dart';
 
 /// [child] (the conversations) and, at its right (its left, as [panel] is
 /// [AgentSidePanel.atLeft]) while [panel] shows, the side panel [builder]
@@ -638,6 +641,10 @@ class AgentSidePanelView extends StatelessWidget {
           SidePanelSection.usage => ConversationUsageView(
             key: ValueKey(('page', SidePanelSection.usage, session)),
             session: session,
+          ),
+          // fork: the browser's page, as Cursor's (lib/fork/browser/).
+          SidePanelSection.browser => const BrowserMirror(
+            key: ValueKey(('page', SidePanelSection.browser)),
           ),
           // fork: the project's plans beside the one open (lib/plan/).
           SidePanelSection.plan => ProjectPlansPage(
@@ -1425,6 +1432,8 @@ extension SidePanelSectionUi on SidePanelSection {
     SidePanelSection.usage => SvgIcons.usage,
     SidePanelSection.plan => Codicons.checklist,
     SidePanelSection.ports => Codicons.plug,
+    // fork: the browser's page (lib/fork/browser/).
+    SidePanelSection.browser => Codicons.globe,
   };
 
   /// The command that shows it; none for the plan's, there only at times.
@@ -1433,7 +1442,10 @@ extension SidePanelSectionUi on SidePanelSection {
     SidePanelSection.changes => ChatCommandIds.sidePanelChanges,
     SidePanelSection.terminal => ChatCommandIds.sidePanelTerminal,
     SidePanelSection.usage => ChatCommandIds.sidePanelUsage,
-    SidePanelSection.plan || SidePanelSection.ports => null,
+    SidePanelSection.plan ||
+    SidePanelSection.ports ||
+    // fork: the browser's page (lib/fork/browser/).
+    SidePanelSection.browser => null,
   };
 
   String label(BuildContext context) => switch (this) {
@@ -1443,6 +1455,8 @@ extension SidePanelSectionUi on SidePanelSection {
     SidePanelSection.usage => context.l10n.sidePanelUsage,
     SidePanelSection.plan => context.l10n.sidePanelPlan,
     SidePanelSection.ports => context.l10n.sidePanelPorts,
+    // fork: the browser's page (lib/fork/browser/).
+    SidePanelSection.browser => context.fork.browserPage,
   };
 }
 
@@ -1497,6 +1511,8 @@ class SidePanelRail extends StatelessWidget {
     SidePanelSection.files ||
     SidePanelSection.usage ||
     SidePanelSection.plan ||
+    // fork: the browser's page (lib/fork/browser/).
+    SidePanelSection.browser ||
     SidePanelSection.ports => 0,
   };
 
@@ -1608,6 +1624,8 @@ class _SectionBar extends StatelessWidget {
     if (tabs.plan != null || ProjectPlans.listed(session.root))
       SidePanelSection.plan,
     if (_portsHost(session) != null) SidePanelSection.ports,
+    // fork: the browser's page, as Cursor's (lib/fork/browser/).
+    if (ForkBrowser.offered) SidePanelSection.browser,
   ];
 
   /// What the tabs of [sections] take with their names (see
@@ -1705,6 +1723,8 @@ class _SectionBar extends StatelessWidget {
                     SidePanelSection.files ||
                     SidePanelSection.usage ||
                     SidePanelSection.plan ||
+                    // fork: the browser's page (lib/fork/browser/).
+                    SidePanelSection.browser ||
                     SidePanelSection.ports => 0,
                     SidePanelSection.changes => changes,
                     SidePanelSection.terminal => running,

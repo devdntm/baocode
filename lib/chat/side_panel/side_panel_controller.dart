@@ -16,6 +16,8 @@ import '../../ide/ide_diff_options.dart';
 import '../../settings/user_settings.dart';
 import 'file_edit.dart';
 import 'file_open.dart';
+// fork: the browser's page (docs/fork.md).
+import '../../fork/browser/fork_browser.dart';
 
 /// A file the side panel shows: its text or its changes, as [request]
 /// asked last.
@@ -75,6 +77,11 @@ enum SidePanelSection {
 
   /// An SSH project's ports forwarded (see PortsView).
   ports,
+
+  /// fork: the browser's page, its mirror of the user's tab, as Cursor has
+  /// one (lib/fork/browser/); under `chat.look: cursor`, once a browser of
+  /// the user's has connected.
+  browser,
 }
 
 /// How the agent window lays out, from its left: the sidebar (the
@@ -133,6 +140,9 @@ class SidePanelTabs {
     // fork: but where the plan's page lists the project's plans.
     SidePanelSection.plan when plan == null && !plansListed =>
       SidePanelSection.changes,
+    // fork: the browser's page, while there is one (ForkBrowser.offered).
+    SidePanelSection.browser when !ForkBrowser.offered =>
+      SidePanelSection.changes,
     _ => section,
   };
 
@@ -162,7 +172,8 @@ class SidePanelTabs {
     SidePanelSection.changes => activeDiff,
     SidePanelSection.terminal ||
     SidePanelSection.usage ||
-    SidePanelSection.ports => null,
+    SidePanelSection.ports ||
+    SidePanelSection.browser => null,
     SidePanelSection.plan => plan,
   };
 }
@@ -838,6 +849,7 @@ class AgentSidePanel extends ChangeNotifier {
         if (tabs.current case final tab?) return close(conversation, tab);
       // Its tabs are the terminals themselves, killed by their own Close.
       case SidePanelSection.terminal ||
+          SidePanelSection.browser ||
           SidePanelSection.usage ||
           SidePanelSection.ports:
         break;

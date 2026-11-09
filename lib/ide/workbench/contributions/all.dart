@@ -25,6 +25,8 @@ import 'scm.dart';
 import 'search.dart';
 import 'terminal.dart';
 import 'window.dart';
+// fork: the browser's page (docs/fork.md).
+import '../../../fork/browser/browser_contribution.dart';
 
 List<WorkbenchContribution> createWorkbenchContributions(
   WorkbenchServices services,
@@ -51,6 +53,8 @@ List<WorkbenchContribution> createWorkbenchContributions(
   // fork: the claude-context index in the status bar; Import from Cursor.
   ClaudeContextContribution(services),
   CursorImportContribution(services),
+  // fork: the browser's page as an editor tab, as Cursor's (lib/fork/browser/).
+  ForkBrowserContribution(services),
   // Last: the text editor's own keys are asked after every other's.
   FocusKeysContribution(services),
 ];

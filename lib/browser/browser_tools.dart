@@ -20,6 +20,8 @@ import 'browser_steps.dart';
 import 'source_map.dart';
 import '../remote/port_forwards.dart';
 import '../remote/remote_location.dart';
+// fork: the browser's page (docs/fork.md).
+import '../fork/browser/fork_browser.dart';
 
 part 'browser_actions.dart';
 part 'browser_debug_tools.dart';
@@ -107,6 +109,8 @@ abstract final class BrowserTools {
               tab,
               () => tool.run(input, call),
             );
+            // fork: the browser's page follows the agent (lib/fork/browser/).
+            if (tool.name != 'browser_close') ForkBrowser.used(tabId);
             return answer;
           },
         ),
@@ -252,6 +256,8 @@ Do not use the browser tools to scrape or bulk-collect data from government, hea
         final tab =
             await browser.request('tabs.create', {'url': 'about:blank'}) as Map;
         final tabId = tab['tabId'] as int;
+        // fork: the browser's page follows the agent (lib/fork/browser/).
+        ForkBrowser.used(tabId);
         await _watch(tabId);
         final url = await _reachable(
           browser,

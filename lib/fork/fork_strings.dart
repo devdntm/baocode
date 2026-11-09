@@ -73,6 +73,30 @@ class ForkStrings {
   };
   String get planSaveToProject => _t('Save to Project', '保存到项目');
   String get planPlans => _t('Plans', '计划');
+
+  // The browser's page (lib/fork/browser/), as upstream had it before
+  // 1.9.0 took it out.
+  String get browserPage => _t('Browser', '浏览器');
+  String get browserNotConnected => _t(
+    "No browser is connected. Add BaoCode's extension to Chrome (or Edge, "
+        'Brave, Arc) and agents can use the tabs you share with them.',
+    '没有连接浏览器。在 Chrome（或 Edge、Brave、Arc）中添加 BaoCode 扩展后，agent 就能使用你共享给它的标签页。',
+  );
+  String get browserNoSharedTab => _t(
+    'No tab is shared yet. Ask an agent to open a page, or click BaoCode '
+        'in the browser toolbar to share the tab in front.',
+    '还没有共享的标签页。让 agent 打开网页，或在浏览器工具栏点 BaoCode 按钮共享当前标签页。',
+  );
+  String get browserSharedTabs => _t('Shared Tabs', '共享的标签页');
+  String get browserReload => _t('Reload', '重新加载');
+  String get browserShowInBrowser => _t('Show in Browser', '在浏览器中显示');
+  String get browserDetached => _t(
+    'The browser stopped letting BaoCode see this tab.',
+    '浏览器已停止让 BaoCode 查看这个标签页。',
+  );
+  String get browserReconnect => _t('Reconnect', '重新连接');
+  String get browserShowInPage => _t('Show in Browser Tab', '在浏览器标签页中查看');
+  String get browserOpenCommand => _t('Open Browser', '打开浏览器');
   String get planNoneOpen => _t(
     'Pick a plan at the left, or open one from the conversation.',
     '在左侧选择一个计划，或从对话中打开。',

@@ -90,6 +90,9 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/sidebar/sidebar.dart` | `Sidebar.projectMenuExtra` (пункты форка в меню проекта: индекс claude-context, Import from Cursor…); `SidebarGrouping.recent` (Pinned / Today / Last 7 days / Last 30 days / Older); параметры `project` (чаты одного проекта, без имени проекта в строках и без Open Project) и `grouping` (фиксированная группировка, без меню By …) |
 | `lib/workbench.dart` | `_ideAgentsBar`: список чатов проекта (`IdeAgentsBar`) для `IdeWorkbench.agents`; `PlanSessions.of` / `.created`: в какой беседе запускать задачи плана и новый агент для «Build in New Agent»; `_fileLinks`: ссылка на план открывает вкладку Plan (`planPageRequest`), `keepPlan` |
 | `lib/chat/side_panel/side_panel_view.dart` | вкладка Plan есть всегда у локального проекта: `ProjectPlansPage` (список планов проекта) вокруг `_planPage`; `PlanContext` (беседа, проект) вокруг предпросмотра плана; «Save to Project» в меню вкладки плана; `tabs.plansListed` |
+| `lib/chat/side_panel/side_panel_controller.dart`, `side_panel_view.dart`, `lib/workbench.dart` | `SidePanelSection.browser`: раздел Browser (`BrowserMirror`), пока `ForkBrowser.offered`; `ForkBrowser.revealInPanel`, `ForkBrowserContribution.registerView` |
+| `lib/browser/browser_tools.dart`, `lib/browser/browser_steps.dart` | `ForkBrowser.used(tabId)` у инструментов; меню шага «Show in Browser Tab» |
+| `lib/ide/workbench/contributions/all.dart` (ещё) | `ForkBrowserContribution`: вкладка Browser в IDE и View: Open Browser |
 | `lib/chat/side_panel/side_panel_controller.dart` | `SidePanelTabs.plansListed` (страница Plan без открытого плана), `keepPlan` (план сессии, прочитанный с историей, без показа) |
 | `lib/chat/side_panel/file_open.dart` | `FileLinkTarget.keepPlan` |
 | `lib/chat/chat_screen.dart` | `_followPlan`: план, прочитанный с историей (`planReplayed`), кладётся во вкладку Plan без переключения на неё |
@@ -355,6 +358,22 @@ CSS самого Cursor (`/Applications/Cursor.app/.../workbench.*.css`, `.rende
   команда, слева «Ask Every Time ⌄» / «Allowlist 'npm'», справа Skip и Run ⏎
   (Enter, Esc). Ответ — вариант самого мода, логика (`Bash(npm:*)` в
   `permissions.allow`) у него же, так что в терминале это обычный вопрос.
+
+## Страница браузера
+
+Upstream убрал её из боковой панели в 1.9.0 (`b19154e8`, #665); в форке она
+вернулась, как у Cursor, при `chat.look: cursor` и подключённом браузере
+([`lib/fork/browser/`](../lib/fork/browser/)):
+
+- **Зеркало вкладки** — `browser_mirror.dart`, файл upstream до удаления, строки
+  форка. Показывает вкладку, с которой агент работал последним
+  (`ForkBrowser.used` из инструментов `browser_*`), или выбранную из
+  общих; в ней можно кликать и печатать.
+- **В режиме чата** — раздел Browser боковой панели (`SidePanelSection.browser`).
+- **В IDE** — вкладка редактора (`FileViews`, путь `ForkBrowser.idePath`, файла
+  нет): View: Open Browser в палитре.
+- **Шаг браузера в чате** — правый клик «Show in Browser Tab»: вкладка в IDE,
+  в окне агентов — раздел боковой панели.
 
 ## Встроенная тема Cursor Dark Midnight
 
