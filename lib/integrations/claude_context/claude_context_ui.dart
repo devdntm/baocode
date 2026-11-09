@@ -1,22 +1,29 @@
 // Where the claude-context index shows (docs/fork.md): an item of the
 // IDE's status bar, "Index 2488/2488", a run's share while it indexes,
 // clicked for what is missing and to index; and the same in the chat's
-// sidebar, in a project's menu.
+// sidebar, in a project's menu. A project the IDE opens with no index is
+// offered one, or indexed at once once the user said so for all.
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 
 import '../../customize/customization_store.dart';
 import '../../customize/customizations.dart';
 import '../../fork/fork_strings.dart';
 import '../../ide/ide_dialog.dart';
 import '../../ide/ide_menu.dart';
+import '../../ide/ide_notifications.dart';
 import '../../ide/ide_status_bar.dart';
 import '../../ide/ide_workspace.dart';
 import '../../ide/workbench/contributions.dart';
 import '../../ide/workbench/services.dart';
 import '../../ide/workbench/statusbar.dart';
+import '../../platform/data_dir.dart';
+import '../../settings/user_settings.dart';
 import '../../sidebar/sidebar_menu.dart';
 import '../../theme/codicons.dart';
 import '../../workspace/workspace.dart';
@@ -51,12 +58,91 @@ class ClaudeContextContribution extends WorkbenchRegistrations {
         final index = ClaudeContextIndex.of(workspace.root, server);
         if (index == null || changes.disposed) return;
         changes.follow(index);
-        if (index.state == ClaudeContextState.unknown) {
-          unawaited(index.check());
-        }
+        if (index.state == ClaudeContextState.unknown) await index.check();
+        final context = services.find<WorkbenchHost>()?.context;
+        if (changes.disposed || context == null || !context.mounted) return;
+        if (index.state != ClaudeContextState.notIndexed) return;
+        await offerClaudeContextIndex(context, workspace.notifications, index);
       }),
     );
   }
+}
+
+/// A project with no index, as the IDE opens it: indexed at once where the
+/// user said so for every project (`claudeContext.autoIndex`), else offered
+/// once a run of the app, not where the user said not to ask.
+abstract final class ClaudeContextOffer {
+  static const settingKey = 'claudeContext.autoIndex';
+
+  static UserSettings get _settings => SettingsFiles.instance.settings;
+
+  /// Whether every project with no index is indexed as it opens.
+  static bool get auto => _settings[settingKey] == true;
+
+  static Future<void> turnOn() => _settings.update(settingKey, true);
+
+  /// The projects offered in this run of the app.
+  static final Set<String> _offered = {};
+
+  static File get _file => File(
+    p.join(DataDirectory.current.cacheDir, 'claude-context', 'no-offer.json'),
+  );
+
+  static Future<Set<String>> _declined() async {
+    try {
+      final json = jsonDecode(await _file.readAsString());
+      return {if (json is List) ...json.whereType<String>()};
+    } on Object {
+      return {};
+    }
+  }
+
+  static Future<bool> declined(String root) async =>
+      (await _declined()).contains(root);
+
+  static Future<void> decline(String root) async {
+    final roots = await _declined()
+      ..add(root);
+    await _file.parent.create(recursive: true);
+    await writeFileAtomically(_file, jsonEncode(roots.toList()..sort()));
+  }
+
+  @visibleForTesting
+  static void forgetOffered() => _offered.clear();
+}
+
+/// [index], of a project with none, indexed or offered
+/// ([ClaudeContextOffer]).
+Future<void> offerClaudeContextIndex(
+  BuildContext context,
+  IdeNotifications notifications,
+  ClaudeContextIndex index,
+) async {
+  if (ClaudeContextOffer.auto) return index.index();
+  if (!ClaudeContextOffer._offered.add(index.root)) return;
+  if (await ClaudeContextOffer.declined(index.root) || !context.mounted) {
+    return;
+  }
+  final fork = context.fork;
+  notifications.notify(
+    IdeSeverity.info,
+    fork.indexOffer,
+    source: 'claude-context',
+    sticky: true,
+    primary: [
+      IdeNotificationAction(fork.indexRun, () => unawaited(index.index())),
+      IdeNotificationAction(fork.indexOfferAlways, () {
+        unawaited(ClaudeContextOffer.turnOn());
+        unawaited(index.index());
+      }),
+    ],
+    secondary: [
+      IdeNotificationAction(
+        fork.indexOfferNever,
+        () => unawaited(ClaudeContextOffer.decline(index.root)),
+      ),
+    ],
+  );
 }
 
 /// Tells as the index followed does, once there is one.

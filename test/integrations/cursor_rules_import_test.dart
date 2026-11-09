@@ -137,6 +137,7 @@ void main() {
       }
     });
     tearDown(() {
+      CursorImportJob.forgetAll();
       CursorProject.home = oldHome;
       temp.deleteSync(recursive: true);
     });
@@ -264,9 +265,14 @@ void main() {
       expect(find.textContaining('"**/*.sql"'), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('cursor.import.run')));
+      await tester.pump();
+      // Its progress, not the parts to pick: no Import, the window free to
+      // close.
+      expect(find.byKey(const ValueKey('cursor.import.run')), findsNothing);
+      expect(find.byKey(const ValueKey('cursor.import.close')), findsOneWidget);
       for (
         var i = 0;
-        i < 50 && find.textContaining('Imported:').evaluate().isEmpty;
+        i < 50 && find.text('Import finished.').evaluate().isEmpty;
         i++
       ) {
         await tester.runAsync(
@@ -274,10 +280,16 @@ void main() {
         );
         await tester.pump();
       }
-      expect(
-        find.text('Imported: 2 rules, 1 skills, 1 MCP servers.'),
-        findsOneWidget,
-      );
+      expect(find.text('Import finished.'), findsOneWidget);
+      expect(find.text('Rules: 2 → .claude/rules'), findsOneWidget);
+      expect(find.text('Skills: 1 → .claude/skills'), findsOneWidget);
+      final job = CursorImportJob.of(root);
+      expect(job.parts.keys, ['rules', 'skills', 'servers']);
+      expect(job.parts.values.toSet(), {CursorPartStage.done});
+      expect(job.counts, {'rules': 2, 'skills': 1, 'servers': 1});
+      await tester.pump();
+      // Its end seen here: the status bar has nothing to tell.
+      expect(job.unseen, isFalse);
       expect(
         File(
           p.join(root, '.claude', 'skills', 'deploy', 'SKILL.md'),
@@ -288,6 +300,42 @@ void main() {
         File(p.join(root, '.claude', 'rules', 'cursorrules.md')).existsSync(),
         isTrue,
       );
+    });
+
+    test('an import: each part\'s stage, its end unseen until seen; a part '
+        'failed is told, the others go on', () async {
+      final project = await CursorProject.read(root);
+      final job = CursorImportJob.of(root);
+      final stages = <Map<String, CursorPartStage>>[];
+      job.addListener(() => stages.add(job.parts));
+      await job.start(project, rules: true, skills: true);
+      expect(stages.first, {
+        'rules': CursorPartStage.running,
+        'skills': CursorPartStage.running,
+      });
+      expect(job.running, isFalse);
+      expect(job.unseen, isTrue);
+      expect(job.failed, isFalse);
+      job.seen();
+      expect(job.unseen, isFalse);
+      expect(CursorImportJob.started(root), same(job));
+      expect(CursorImportJob.started(p.join(temp.path, 'other')), isNull);
+
+      // .claude/rules a file: the rules cannot be written there.
+      Directory(p.join(root, '.claude', 'rules')).deleteSync(recursive: true);
+      File(p.join(root, '.claude', 'rules')).writeAsStringSync('');
+      await job.start(
+        await CursorProject.read(root),
+        rules: true,
+        servers: true,
+      );
+      expect(job.parts, {
+        'rules': CursorPartStage.failed,
+        'servers': CursorPartStage.done,
+      });
+      expect(job.errors.keys, ['rules']);
+      expect(job.failed, isTrue);
+      expect(job.unseen, isTrue);
     });
 
     test('a notice put off is not shown again', () async {

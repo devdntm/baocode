@@ -428,6 +428,151 @@ Future<void> importCursorThemes(
   }
 }
 
+/// Where a part of an import is.
+enum CursorPartStage { running, done, failed }
+
+/// An import of a project's Cursor setup, once started: each part's
+/// stage, what was brought; one per project, kept once its dialog is
+/// closed (the status bar and the sidebar follow it).
+class CursorImportJob extends ChangeNotifier {
+  CursorImportJob._(this.root);
+
+  final String root;
+
+  static final Map<String, CursorImportJob> _jobs = {};
+
+  static CursorImportJob of(String root) =>
+      _jobs.putIfAbsent(root, () => CursorImportJob._(root));
+
+  /// The project's, where one was started.
+  static CursorImportJob? started(String root) => switch (_jobs[root]) {
+    final job? when job.parts.isNotEmpty => job,
+    _ => null,
+  };
+
+  /// The parts of the last start, by name (`rules`, `skills`, `servers`,
+  /// `themes`, `history`), in order.
+  Map<String, CursorPartStage> get parts => Map.unmodifiable(_parts);
+  final Map<String, CursorPartStage> _parts = {};
+
+  /// What each part brought: files, servers.
+  Map<String, int> get counts => Map.unmodifiable(_counts);
+  final Map<String, int> _counts = {};
+
+  /// Why parts failed, by name.
+  Map<String, String> get errors => Map.unmodifiable(_errors);
+  final Map<String, String> _errors = {};
+
+  /// The conversations' import, where it is a part.
+  CursorHistoryImport? get history => _history;
+  CursorHistoryImport? _history;
+
+  bool get running => _parts.values.contains(CursorPartStage.running);
+
+  bool get failed => _parts.values.contains(CursorPartStage.failed);
+
+  /// Whether it has finished since the user last saw it ([seen]).
+  bool get unseen => _unseen;
+  bool _unseen = false;
+
+  /// Brings over the parts asked for of [project]: the quick ones in turn,
+  /// the conversations' import, long, the last.
+  Future<void> start(
+    CursorProject project, {
+    bool rules = false,
+    bool skills = false,
+    bool servers = false,
+    ThemeExtensions? themes,
+    CursorHistoryImport? history,
+  }) async {
+    if (running) return;
+    _parts.clear();
+    _counts.clear();
+    _errors.clear();
+    _history?.removeListener(_followHistory);
+    _history = history;
+    _unseen = false;
+    for (final (name, asked) in [
+      ('rules', rules),
+      ('skills', skills),
+      ('servers', servers),
+      ('themes', themes != null),
+      ('history', history != null),
+    ]) {
+      if (asked) _parts[name] = CursorPartStage.running;
+    }
+    notifyListeners();
+    Future<void> part(String name, Future<int> Function() run) async {
+      if (!_parts.containsKey(name)) return;
+      try {
+        _counts[name] = await run();
+        _parts[name] = CursorPartStage.done;
+      } on Object catch (error) {
+        _errors[name] = '$error';
+        _parts[name] = CursorPartStage.failed;
+      }
+      notifyListeners();
+    }
+
+    await part(
+      'rules',
+      () async => (await project.importRules(
+        project.rules.where((rule) => !rule.exists),
+      )).length,
+    );
+    await part(
+      'skills',
+      () async => (await project.importSkills(
+        project.skills.where((skill) => !skill.exists),
+      )).length,
+    );
+    await part('servers', () async {
+      await project.importServers(project.servers.keys);
+      return project.servers.length;
+    });
+    await part('themes', () async {
+      await importCursorThemes(themes!);
+      return 1;
+    });
+    if (history == null) return _finished();
+    history.addListener(_followHistory);
+    await history.run();
+  }
+
+  void _followHistory() {
+    final history = _history;
+    if (history == null || !_parts.containsKey('history')) return;
+    final stage = switch (history.stage) {
+      CursorHistoryStage.done => CursorPartStage.done,
+      CursorHistoryStage.failed => CursorPartStage.failed,
+      _ => CursorPartStage.running,
+    };
+    if (stage == CursorPartStage.failed) {
+      _errors['history'] = history.error ?? '';
+    }
+    if (stage == CursorPartStage.done) _counts['history'] = history.done;
+    _parts['history'] = stage;
+    notifyListeners();
+    _finished();
+  }
+
+  void _finished() {
+    if (running) return;
+    _unseen = true;
+    notifyListeners();
+  }
+
+  /// The user has seen how it ended: the status bar lets it go.
+  void seen() {
+    if (!_unseen) return;
+    _unseen = false;
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  static void forgetAll() => _jobs.clear();
+}
+
 /// Where a history's import is.
 enum CursorHistoryStage {
   idle,

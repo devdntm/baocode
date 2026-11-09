@@ -137,6 +137,15 @@ class ForkStrings {
     '将删除现有索引并从所有文件重新建立：大型项目需要数分钟（约每秒 12 个片段）。',
   );
   String get indexProject => _t('Index for Search', '为搜索建立索引');
+  String get indexOffer => _t(
+    'This project is not indexed for semantic code search (claude-context). '
+        'Index it now? It runs in the background, about 12 chunks a second. '
+        'Always Index indexes every project without an index as it opens.',
+    '此项目尚未为语义代码搜索（claude-context）建立索引。现在建立吗？'
+        '索引在后台进行，约每秒 12 个片段。“总是索引”会在打开任何未索引的项目时自动建立索引。',
+  );
+  String get indexOfferAlways => _t('Always Index', '总是索引');
+  String get indexOfferNever => _t('Don\'t Ask for This Project', '不再为此项目询问');
   String get indexInterruptedHint => _t(
     'The server indexing it stopped before it was done: index it again, all '
         'of it.',
@@ -203,10 +212,23 @@ class ForkStrings {
   String get cursorImportKeys => _t('Keybindings…', '快捷键…');
   String get cursorImportRun => _t('Import', '导入');
   String get cursorImportClose => _t('Close', '关闭');
-  String cursorImportDone(int rules, int skills, int servers) => _t(
-    'Imported: $rules rules, $skills skills, $servers MCP servers.',
-    '已导入：$rules 条规则，$skills 个技能，$servers 个 MCP 服务器。',
+  String get cursorImportCloseHint => _t(
+    'You can close this window: the import goes on, and the status bar '
+        'shows how far it is.',
+    '可以关闭此窗口：导入会继续进行，进度显示在状态栏中。',
   );
+  String get cursorImportFinished => _t('Import finished.', '导入完成。');
+  String get cursorImportFailed =>
+      _t('Import finished with errors.', '导入完成，但有错误。');
+  String cursorImportStatusRunning(String detail) =>
+      _t('Cursor import: $detail', 'Cursor 导入：$detail');
+  String get cursorImportStatusDone => _t('Cursor import done', 'Cursor 导入完成');
+  String get cursorImportStatusFailed =>
+      _t('Cursor import failed', 'Cursor 导入失败');
+  String get cursorImportStatusTooltip =>
+      _t('Import from Cursor: show its progress', '从 Cursor 导入：查看进度');
+  String get cursorImportShow => _t('Show', '查看');
+  String get cursorImportStatusParts => _t('importing', '正在导入');
 }
 
 extension ForkStringsContext on BuildContext {

@@ -25,18 +25,29 @@ abstract final class CursorImport {
   static ThemeExtensions? themes;
   static Future<void> Function(BuildContext context)? importKeys;
 
+  static final Set<String> _open = {};
+
+  /// Whether the dialog for [root] shows: its import's end is told there.
+  static bool isOpen(String root) => _open.contains(root);
+
   /// Shows the dialog for the project at [root].
   static Future<void> open(BuildContext context, String root) async {
-    final project = await CursorProject.read(root);
-    if (!context.mounted) return;
-    await showGeneralDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: context.l10n.commonDismiss,
-      barrierColor: const Color(0x80000000),
-      transitionDuration: Duration.zero,
-      pageBuilder: (context, _, _) => CursorImportDialog(project: project),
-    );
+    if (isOpen(root)) return;
+    _open.add(root);
+    try {
+      final project = await CursorProject.read(root);
+      if (!context.mounted) return;
+      await showGeneralDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: context.l10n.commonDismiss,
+        barrierColor: const Color(0x80000000),
+        transitionDuration: Duration.zero,
+        pageBuilder: (context, _, _) => CursorImportDialog(project: project),
+      );
+    } finally {
+      _open.remove(root);
+    }
   }
 }
 
@@ -56,9 +67,6 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
   bool _history = false;
   bool _themes = false;
   final Set<String> _previewed = {};
-  bool _importing = false;
-  String? _result;
-  String? _error;
 
   CursorHistoryImport? get _historyImport =>
       switch (widget.project.transcripts) {
@@ -104,35 +112,25 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
     return false;
   }
 
-  Future<void> _import() async {
-    setState(() {
-      _importing = true;
-      _error = null;
-    });
-    final project = widget.project;
-    try {
-      final rules = _rules
-          ? await project.importRules(project.rules.where((r) => !r.exists))
-          : const <String>[];
-      final skills = _skills
-          ? await project.importSkills(project.skills.where((s) => !s.exists))
-          : const <String>[];
-      if (_servers) await project.importServers(project.servers.keys);
-      if (_themes) await importCursorThemes(CursorImport.themes!);
-      if (_history) unawaited(_historyImport!.run());
-      if (!mounted) return;
-      setState(() {
-        _result = context.fork.cursorImportDone(
-          rules.length,
-          skills.length,
-          _servers ? project.servers.length : 0,
-        );
-      });
-    } on Object catch (error) {
-      if (mounted) setState(() => _error = '$error');
-    } finally {
-      if (mounted) setState(() => _importing = false);
-    }
+  CursorImportJob get _job => CursorImportJob.of(widget.project.root);
+
+  /// Whether it shows the import's progress, not its parts to pick: once
+  /// started here, or opened again while it goes on or before its end
+  /// was seen.
+  late bool _progress = _job.parts.isNotEmpty && (_job.running || _job.unseen);
+
+  void _import() {
+    setState(() => _progress = true);
+    unawaited(
+      _job.start(
+        widget.project,
+        rules: _rules,
+        skills: _skills,
+        servers: _servers,
+        themes: _themes ? CursorImport.themes : null,
+        history: _history ? _historyImport : null,
+      ),
+    );
   }
 
   @override
@@ -201,99 +199,106 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          if (project.rules.isNotEmpty) ...[
-                            IdeCheckbox(
-                              key: const ValueKey('cursor.import.rules'),
-                              label: fork.cursorImportRules(
-                                project.rules.where((r) => !r.exists).length,
-                              ),
-                              checked: _rules,
-                              onChanged: () => setState(() => _rules = !_rules),
-                            ),
-                            for (final rule in project.rules)
-                              _fileRow(
-                                path: rule.target,
-                                name: p.basename(rule.target),
-                                exists: rule.exists,
-                                note: rule.alwaysNow
-                                    ? fork.cursorImportRuleAlways
-                                    : '',
-                                text: rule.text,
-                              ),
-                            const SizedBox(height: 10),
-                          ],
-                          if (project.skills.isNotEmpty) ...[
-                            IdeCheckbox(
-                              key: const ValueKey('cursor.import.skills'),
-                              label: fork.cursorImportSkills(
-                                project.skills.where((s) => !s.exists).length,
-                              ),
-                              checked: _skills,
-                              onChanged: () =>
-                                  setState(() => _skills = !_skills),
-                            ),
-                            for (final skill in project.skills)
-                              _fileRow(
-                                path: skill.target,
-                                name: skill.name,
-                                exists: skill.exists,
-                                note: skill.description,
-                                text: skill.text,
-                              ),
-                            const SizedBox(height: 10),
-                          ],
-                          if (project.servers.isNotEmpty ||
-                              project.serversHad.isNotEmpty) ...[
-                            if (project.servers.isNotEmpty)
-                              IdeCheckbox(
-                                key: const ValueKey('cursor.import.servers'),
-                                label: fork.cursorImportServers(
-                                  project.servers.length,
-                                  project.servers.keys.join(', '),
-                                ),
-                                checked: _servers,
-                                onChanged: () =>
-                                    setState(() => _servers = !_servers),
-                              ),
-                            if (project.serversHad.isNotEmpty)
-                              _note(
-                                fork.cursorImportServersHad(
-                                  project.serversHad.join(', '),
-                                ),
-                              ),
-                            const SizedBox(height: 10),
-                          ],
-                          if (history != null) ...[
-                            IdeCheckbox(
-                              key: const ValueKey('cursor.import.history'),
-                              label: fork.cursorImportHistory(project.sessions),
-                              checked: _history,
-                              onChanged: () {
-                                if (!_historyAvailable || history.running) {
-                                  return;
-                                }
-                                setState(() => _history = !_history);
-                              },
-                            ),
+                          if (_progress)
                             ListenableBuilder(
-                              listenable: history,
-                              builder: (context, _) => _historyNote(history),
-                            ),
-                            const SizedBox(height: 10),
+                              listenable: _job,
+                              builder: (context, _) => _progressView(),
+                            )
+                          else ...[
+                            if (project.rules.isNotEmpty) ...[
+                              IdeCheckbox(
+                                key: const ValueKey('cursor.import.rules'),
+                                label: fork.cursorImportRules(
+                                  project.rules.where((r) => !r.exists).length,
+                                ),
+                                checked: _rules,
+                                onChanged: () =>
+                                    setState(() => _rules = !_rules),
+                              ),
+                              for (final rule in project.rules)
+                                _fileRow(
+                                  path: rule.target,
+                                  name: p.basename(rule.target),
+                                  exists: rule.exists,
+                                  note: rule.alwaysNow
+                                      ? fork.cursorImportRuleAlways
+                                      : '',
+                                  text: rule.text,
+                                ),
+                              const SizedBox(height: 10),
+                            ],
+                            if (project.skills.isNotEmpty) ...[
+                              IdeCheckbox(
+                                key: const ValueKey('cursor.import.skills'),
+                                label: fork.cursorImportSkills(
+                                  project.skills.where((s) => !s.exists).length,
+                                ),
+                                checked: _skills,
+                                onChanged: () =>
+                                    setState(() => _skills = !_skills),
+                              ),
+                              for (final skill in project.skills)
+                                _fileRow(
+                                  path: skill.target,
+                                  name: skill.name,
+                                  exists: skill.exists,
+                                  note: skill.description,
+                                  text: skill.text,
+                                ),
+                              const SizedBox(height: 10),
+                            ],
+                            if (project.servers.isNotEmpty ||
+                                project.serversHad.isNotEmpty) ...[
+                              if (project.servers.isNotEmpty)
+                                IdeCheckbox(
+                                  key: const ValueKey('cursor.import.servers'),
+                                  label: fork.cursorImportServers(
+                                    project.servers.length,
+                                    project.servers.keys.join(', '),
+                                  ),
+                                  checked: _servers,
+                                  onChanged: () =>
+                                      setState(() => _servers = !_servers),
+                                ),
+                              if (project.serversHad.isNotEmpty)
+                                _note(
+                                  fork.cursorImportServersHad(
+                                    project.serversHad.join(', '),
+                                  ),
+                                ),
+                              const SizedBox(height: 10),
+                            ],
+                            if (history != null) ...[
+                              IdeCheckbox(
+                                key: const ValueKey('cursor.import.history'),
+                                label: fork.cursorImportHistory(
+                                  project.sessions,
+                                ),
+                                checked: _history,
+                                onChanged: () {
+                                  if (!_historyAvailable || history.running) {
+                                    return;
+                                  }
+                                  setState(() => _history = !_history);
+                                },
+                              ),
+                              ListenableBuilder(
+                                listenable: history,
+                                builder: (context, _) => _historyNote(history),
+                              ),
+                              const SizedBox(height: 10),
+                            ],
+                            if (_themesAvailable) ...[
+                              IdeCheckbox(
+                                key: const ValueKey('cursor.import.themes'),
+                                label: fork.cursorImportThemes,
+                                checked: _themes,
+                                onChanged: () =>
+                                    setState(() => _themes = !_themes),
+                              ),
+                              const SizedBox(height: 10),
+                            ],
                           ],
-                          if (_themesAvailable) ...[
-                            IdeCheckbox(
-                              key: const ValueKey('cursor.import.themes'),
-                              label: fork.cursorImportThemes,
-                              checked: _themes,
-                              onChanged: () =>
-                                  setState(() => _themes = !_themes),
-                            ),
-                            const SizedBox(height: 10),
-                          ],
-                          if (_result case final result?) _note(result),
-                          if (_error case final error?)
-                            _note(error, color: colors['errorForeground']),
                         ],
                       ),
                     ),
@@ -310,25 +315,25 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
                         ),
                       const Spacer(),
                       IdeButton(
+                        key: const ValueKey('cursor.import.close'),
                         label: fork.cursorImportClose,
-                        secondary: true,
+                        secondary: !_progress,
                         onPressed: () => Navigator.pop(context),
                       ),
                       const SizedBox(width: 8),
-                      IdeButton(
-                        key: const ValueKey('cursor.import.run'),
-                        label: fork.cursorImportRun,
-                        spinning: _importing,
-                        onPressed:
-                            _importing ||
-                                !(_rules ||
-                                    _skills ||
-                                    _servers ||
-                                    _history ||
-                                    _themes)
-                            ? null
-                            : () => unawaited(_import()),
-                      ),
+                      if (!_progress)
+                        IdeButton(
+                          key: const ValueKey('cursor.import.run'),
+                          label: fork.cursorImportRun,
+                          onPressed:
+                              !(_rules ||
+                                  _skills ||
+                                  _servers ||
+                                  _history ||
+                                  _themes)
+                              ? null
+                              : _import,
+                        ),
                     ],
                   ),
                 ],
@@ -410,6 +415,135 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  /// Each part asked for, how far it is, and that the window can be
+  /// closed while it goes on.
+  Widget _progressView() {
+    final fork = context.fork;
+    final project = widget.project;
+    final job = _job;
+    // Its end shown here: the status bar has nothing more to tell.
+    if (!job.running && job.unseen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => job.seen());
+    }
+    String label(String part) {
+      final count = job.counts[part];
+      return switch (part) {
+        'rules' => fork.cursorImportRules(
+          count ?? project.rules.where((r) => !r.exists).length,
+        ),
+        'skills' => fork.cursorImportSkills(
+          count ?? project.skills.where((s) => !s.exists).length,
+        ),
+        'servers' => fork.cursorImportServers(
+          count ?? project.servers.length,
+          project.servers.keys.join(', '),
+        ),
+        'themes' => fork.cursorImportThemes,
+        _ => fork.cursorImportHistory(project.sessions),
+      };
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final MapEntry(key: part, value: stage) in job.parts.entries) ...[
+          _partRow(label(part), stage),
+          if (job.errors[part] case final error? when error.isNotEmpty)
+            _note(error, color: themeColors['errorForeground']),
+          if (part == 'history' && job.history != null)
+            _historyProgress(job.history!),
+          const SizedBox(height: 8),
+        ],
+        const SizedBox(height: 4),
+        Text(
+          job.running
+              ? fork.cursorImportCloseHint
+              : job.failed
+              ? fork.cursorImportFailed
+              : fork.cursorImportFinished,
+          key: const ValueKey('cursor.import.status'),
+          style: TextStyle(
+            color: job.running || !job.failed
+                ? AppColors.textMuted
+                : themeColors['errorForeground'],
+            fontSize: 12,
+            height: 1.4,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _partRow(String label, CursorPartStage stage) => Row(
+    children: [
+      SizedBox.square(
+        dimension: 16,
+        child: switch (stage) {
+          CursorPartStage.running => Padding(
+            padding: const EdgeInsets.all(2),
+            child: CircularProgressIndicator(
+              strokeWidth: 1.6,
+              color: AppColors.textMuted,
+            ),
+          ),
+          CursorPartStage.done => Icon(
+            Codicons.check,
+            size: 16,
+            color: themeColors.get('testing.iconPassed') ?? AppColors.textMuted,
+          ),
+          CursorPartStage.failed => Icon(
+            Codicons.error,
+            size: 16,
+            color: themeColors['errorForeground'],
+          ),
+        },
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Text(
+          label,
+          style: TextStyle(color: AppColors.text, fontSize: 12.5),
+        ),
+      ),
+    ],
+  );
+
+  /// The conversations' stage and a bar of the turns told so far.
+  Widget _historyProgress(CursorHistoryImport history) {
+    final fork = context.fork;
+    final stage = fork.cursorImportStage(history.stage.name);
+    final summarizing = history.stage == CursorHistoryStage.summarizing;
+    final total = history.total;
+    return Padding(
+      padding: const EdgeInsets.only(left: 24, top: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            summarizing
+                ? fork.cursorImportHistoryProgress(stage, history.done, total)
+                : stage,
+            style: TextStyle(color: AppColors.textFaint, fontSize: 12),
+          ),
+          if (history.running) ...[
+            const SizedBox(height: 4),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                minHeight: 3,
+                value: summarizing && total != null && total > 0
+                    ? history.done / total
+                    : null,
+                color: themeColors['progressBar.background'],
+                backgroundColor: AppColors.code,
+              ),
+            ),
+          ],
         ],
       ),
     );

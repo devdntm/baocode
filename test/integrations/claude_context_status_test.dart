@@ -4,7 +4,10 @@ import 'dart:io';
 import 'package:baocode/customize/customization_store.dart';
 import 'package:baocode/integrations/claude_context/claude_context.dart';
 import 'package:baocode/integrations/claude_context/claude_context_ui.dart';
+import 'package:baocode/ide/ide_notifications.dart';
 import 'package:baocode/keybindings/keybinding_service.dart';
+import 'package:baocode/platform/data_dir.dart';
+import 'package:baocode/settings/user_settings.dart';
 import 'package:baocode/workspace/workspace.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,6 +50,7 @@ void main() {
     answer = (_) => [];
     ClaudeContextIndex.enabled = true;
     ClaudeContextIndex.forgetAll();
+    ClaudeContextOffer.forgetOffered();
     ClaudeContextIndex.runner = (args, server) {
       asked.add(args);
       return Stream.fromIterable(answer(args));
@@ -206,6 +210,75 @@ void main() {
     expect(asked.last, ['index', inRoot(''), '--json', '--force']);
     await tester.pump();
     expect(find.text('Index 2488/2488'), findsOneWidget);
+  });
+
+  testWidgets('a project with no index: offered; always, it is indexed and '
+      'the next one is at once', (tester) async {
+    final serverOf = ClaudeContextIndex.serverOf;
+    addTearDown(() => ClaudeContextIndex.serverOf = serverOf);
+    ClaudeContextIndex.serverOf = (root) async => _server;
+    // A settings file of its own: the setting is not left to the others.
+    final data = Directory.systemTemp.createTempSync('baocode-offer');
+    final files = SettingsFiles.instance;
+    SettingsFiles.instance = SettingsFiles(DataDirectory(data.path));
+    addTearDown(() {
+      SettingsFiles.instance = files;
+      data.deleteSync(recursive: true);
+    });
+    final settings = SettingsFiles.instance.settings;
+    answer = (args) => switch (args.first) {
+      'check' => [
+        {'event': 'check', ..._report(exists: false, project: null)},
+      ],
+      _ => [
+        {'event': 'done', ..._report()},
+      ],
+    };
+    await pumpWorkbench(tester, {'a.txt': 'a'});
+    final offer = find.textContaining('not indexed for semantic code search');
+    for (var i = 0; i < 100 && offer.evaluate().isEmpty; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump();
+    }
+    expect(offer, findsOneWidget);
+    expect(asked, [
+      ['check', inRoot(''), '--json'],
+    ]);
+
+    // The toast in, its sliding done.
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.text('Always Index'));
+    for (var i = 0; i < 50 && asked.length < 2; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump();
+    }
+    expect(asked.last, ['index', inRoot(''), '--json']);
+    for (
+      var i = 0;
+      i < 50 && settings[ClaudeContextOffer.settingKey] != true;
+      i++
+    ) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump();
+    }
+    expect(settings[ClaudeContextOffer.settingKey], isTrue);
+
+    // Another project with none: indexed, not offered.
+    final other = ClaudeContextIndex.of('/elsewhere', _server)!;
+    await tester.pump();
+    final context = tester.element(find.text('Index 2488/2488'));
+    await tester.runAsync(() async {
+      asked.clear();
+      await other.check();
+      await offerClaudeContextIndex(context, IdeNotifications(), other);
+    });
+    expect(asked.last, ['index', '/elsewhere', '--json']);
   });
 
   testWidgets('a project\'s menu in the sidebar: its state, to index', (
