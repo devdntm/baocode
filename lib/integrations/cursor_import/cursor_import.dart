@@ -43,6 +43,34 @@ class CursorRuleImport {
   final bool alwaysNow;
 }
 
+/// A skill of Cursor's: the same `SKILL.md` as Claude Code's, its folder
+/// copied as it is.
+@immutable
+class CursorSkillImport {
+  const CursorSkillImport({
+    required this.source,
+    required this.target,
+    required this.text,
+    required this.description,
+    required this.exists,
+  });
+
+  /// Its folder under `.cursor/skills`.
+  final String source;
+
+  /// Its folder under `.claude/skills`.
+  final String target;
+
+  /// Its `SKILL.md`.
+  final String text;
+  final String description;
+
+  /// Whether the project has a skill there already: not overwritten.
+  final bool exists;
+
+  String get name => p.basename(target);
+}
+
 /// [mdc], a rule of Cursor's, as Claude Code's: `globs` as `paths`,
 /// `alwaysApply` and `description` gone (Claude Code reads a rule without
 /// `paths` always). Whether it was applied only where relevant in Cursor.
@@ -115,6 +143,7 @@ class CursorProject {
   CursorProject._({
     required this.root,
     required this.rules,
+    required this.skills,
     required this.servers,
     required this.serversHad,
     required this.transcripts,
@@ -123,6 +152,7 @@ class CursorProject {
 
   final String root;
   final List<CursorRuleImport> rules;
+  final List<CursorSkillImport> skills;
 
   /// Cursor's MCP servers the project's `.mcp.json` has not.
   final Map<String, Map<String, Object?>> servers;
@@ -158,7 +188,8 @@ class CursorProject {
         Directory(p.join(folderOf(root), 'agent-transcripts')).existsSync();
   }
 
-  bool get isEmpty => rules.isEmpty && servers.isEmpty && sessions == 0;
+  bool get isEmpty =>
+      rules.isEmpty && skills.isEmpty && servers.isEmpty && sessions == 0;
 
   /// What [root] has of Cursor's.
   static Future<CursorProject> read(String root) async {
@@ -196,6 +227,32 @@ class CursorProject {
     final legacy = File(p.join(root, '.cursorrules'));
     if (await legacy.exists()) await rule(legacy.path, 'cursorrules.md');
 
+    final skills = <CursorSkillImport>[];
+    final cursorSkills = Directory(p.join(root, '.cursor', 'skills'));
+    if (await cursorSkills.exists()) {
+      final folders = await cursorSkills
+          .list()
+          .where((entry) => entry is Directory)
+          .map((entry) => entry.path)
+          .toList();
+      folders.sort();
+      for (final folder in folders) {
+        final skill = File(p.join(folder, 'SKILL.md'));
+        if (!await skill.exists()) continue;
+        final text = await skill.readAsString();
+        final path = p.join(root, '.claude', 'skills', p.basename(folder));
+        skills.add(
+          CursorSkillImport(
+            source: folder,
+            target: path,
+            text: text,
+            description: _skillDescription(text),
+            exists: await Directory(path).exists(),
+          ),
+        );
+      }
+    }
+
     final servers = <String, Map<String, Object?>>{};
     final had = <String>[];
     final cursorMcp = await _json(p.join(root, '.cursor', 'mcp.json'));
@@ -225,11 +282,26 @@ class CursorProject {
     return CursorProject._(
       root: root,
       rules: rules,
+      skills: skills,
       servers: servers,
       serversHad: had,
       transcripts: sessions == 0 ? null : transcripts.path,
       sessions: sessions,
     );
+  }
+
+  /// The `description` of a `SKILL.md`'s front matter.
+  static String _skillDescription(String text) {
+    final match = RegExp(r'^---\r?\n([\s\S]*?)\r?\n---').firstMatch(text);
+    if (match == null) return '';
+    try {
+      if (loadYaml(match[1]!) case {'description': final Object description}) {
+        return '$description'.trim();
+      }
+    } on YamlException {
+      return '';
+    }
+    return '';
   }
 
   static Future<Map<String, Object?>?> _json(String path) async {
@@ -250,6 +322,45 @@ class CursorProject {
       await file.parent.create(recursive: true);
       await writeFileAtomically(file, rule.text);
       written.add(rule.target);
+    }
+    return written;
+  }
+
+  /// Copies [skills] the project has not, each folder whole (into a
+  /// folder beside it first, so a copy cut short is no skill): their
+  /// paths.
+  Future<List<String>> importSkills(Iterable<CursorSkillImport> skills) async {
+    final written = <String>[];
+    for (final skill in skills) {
+      final target = Directory(skill.target);
+      if (await target.exists()) continue;
+      await target.parent.create(recursive: true);
+      final temp = await target.parent.createTemp('.${skill.name}-');
+      try {
+        await for (final entry in Directory(
+          skill.source,
+        ).list(recursive: true, followLinks: false)) {
+          final path = p.join(
+            temp.path,
+            p.relative(entry.path, from: skill.source),
+          );
+          switch (entry) {
+            case Directory():
+              await Directory(path).create(recursive: true);
+            case File():
+              await Directory(p.dirname(path)).create(recursive: true);
+              await entry.copy(path);
+            case Link():
+              await Directory(p.dirname(path)).create(recursive: true);
+              await Link(path).create(await entry.target());
+          }
+        }
+        await temp.rename(target.path);
+      } on Object {
+        if (await temp.exists()) await temp.delete(recursive: true);
+        rethrow;
+      }
+      written.add(skill.target);
     }
     return written;
   }
@@ -395,8 +506,9 @@ class CursorHistoryImport extends ChangeNotifier {
       await _python(
         ['summarize', transcripts, _cache, '--jobs', '4'],
         onLine: (line) {
-          final match = RegExp(r'^progress (\d+)/(\d+) \(failed (\d+)\)')
-              .firstMatch(line);
+          final match = RegExp(
+            r'^progress (\d+)/(\d+) \(failed (\d+)\)',
+          ).firstMatch(line);
           if (match == null) return;
           _done = int.parse(match[1]!);
           _total = int.parse(match[2]!);

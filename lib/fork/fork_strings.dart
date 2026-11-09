@@ -147,13 +147,15 @@ class ForkStrings {
   String get cursorImportTitle => _t('Import from Cursor', '从 Cursor 导入');
   String get cursorImportAction => _t('Import from Cursor…', '从 Cursor 导入…');
   String get cursorImportBanner => _t(
-    'This project was used in Cursor: bring its rules, MCP servers and '
-        'conversations over?',
-    '此项目曾在 Cursor 中使用：要导入它的规则、MCP 服务器和对话吗？',
+    'This project was used in Cursor: bring its rules, skills, MCP servers '
+        'and conversations over?',
+    '此项目曾在 Cursor 中使用：要导入它的规则、技能、MCP 服务器和对话吗？',
   );
   String get cursorImportDismiss => _t('Not now', '暂不');
   String cursorImportRules(int count) =>
       _t('Rules: $count → .claude/rules', '规则：$count 条 → .claude/rules');
+  String cursorImportSkills(int count) =>
+      _t('Skills: $count → .claude/skills', '技能：$count 个 → .claude/skills');
   String get cursorImportRuleExists => _t('exists, kept', '已存在，保留');
   String get cursorImportRuleAlways => _t(
     'Cursor applied it when relevant; Claude Code reads it always',
@@ -201,9 +203,9 @@ class ForkStrings {
   String get cursorImportKeys => _t('Keybindings…', '快捷键…');
   String get cursorImportRun => _t('Import', '导入');
   String get cursorImportClose => _t('Close', '关闭');
-  String cursorImportDone(int rules, int servers) => _t(
-    'Imported: $rules rules, $servers MCP servers.',
-    '已导入：$rules 条规则，$servers 个 MCP 服务器。',
+  String cursorImportDone(int rules, int skills, int servers) => _t(
+    'Imported: $rules rules, $skills skills, $servers MCP servers.',
+    '已导入：$rules 条规则，$skills 个技能，$servers 个 MCP 服务器。',
   );
 }
 

@@ -1,6 +1,6 @@
 // Import from Cursor, the dialog (docs/fork.md): what a project has of
 // Cursor's, each part picked to bring over (its rules shown as they would
-// be), then brought; its conversations' import goes on with its progress
+// be, its skills as they are), then brought; its conversations' import goes on with its progress
 // here, and on once the dialog is closed.
 
 import 'dart:async';
@@ -51,6 +51,7 @@ class CursorImportDialog extends StatefulWidget {
 
 class _CursorImportDialogState extends State<CursorImportDialog> {
   late bool _rules = widget.project.rules.any((rule) => !rule.exists);
+  late bool _skills = widget.project.skills.any((skill) => !skill.exists);
   late bool _servers = widget.project.servers.isNotEmpty;
   bool _history = false;
   bool _themes = false;
@@ -113,6 +114,9 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
       final rules = _rules
           ? await project.importRules(project.rules.where((r) => !r.exists))
           : const <String>[];
+      final skills = _skills
+          ? await project.importSkills(project.skills.where((s) => !s.exists))
+          : const <String>[];
       if (_servers) await project.importServers(project.servers.keys);
       if (_themes) await importCursorThemes(CursorImport.themes!);
       if (_history) unawaited(_historyImport!.run());
@@ -120,6 +124,7 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
       setState(() {
         _result = context.fork.cursorImportDone(
           rules.length,
+          skills.length,
           _servers ? project.servers.length : 0,
         );
       });
@@ -205,7 +210,36 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
                               checked: _rules,
                               onChanged: () => setState(() => _rules = !_rules),
                             ),
-                            for (final rule in project.rules) _ruleRow(rule),
+                            for (final rule in project.rules)
+                              _fileRow(
+                                path: rule.target,
+                                name: p.basename(rule.target),
+                                exists: rule.exists,
+                                note: rule.alwaysNow
+                                    ? fork.cursorImportRuleAlways
+                                    : '',
+                                text: rule.text,
+                              ),
+                            const SizedBox(height: 10),
+                          ],
+                          if (project.skills.isNotEmpty) ...[
+                            IdeCheckbox(
+                              key: const ValueKey('cursor.import.skills'),
+                              label: fork.cursorImportSkills(
+                                project.skills.where((s) => !s.exists).length,
+                              ),
+                              checked: _skills,
+                              onChanged: () =>
+                                  setState(() => _skills = !_skills),
+                            ),
+                            for (final skill in project.skills)
+                              _fileRow(
+                                path: skill.target,
+                                name: skill.name,
+                                exists: skill.exists,
+                                note: skill.description,
+                                text: skill.text,
+                              ),
                             const SizedBox(height: 10),
                           ],
                           if (project.servers.isNotEmpty ||
@@ -287,7 +321,11 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
                         spinning: _importing,
                         onPressed:
                             _importing ||
-                                !(_rules || _servers || _history || _themes)
+                                !(_rules ||
+                                    _skills ||
+                                    _servers ||
+                                    _history ||
+                                    _themes)
                             ? null
                             : () => unawaited(_import()),
                       ),
@@ -302,10 +340,16 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
     );
   }
 
-  Widget _ruleRow(CursorRuleImport rule) {
+  /// A rule or a skill: its name, a note, its text shown when tapped.
+  Widget _fileRow({
+    required String path,
+    required String name,
+    required bool exists,
+    required String note,
+    required String text,
+  }) {
     final fork = context.fork;
-    final name = p.basename(rule.target);
-    final open = _previewed.contains(rule.target);
+    final open = _previewed.contains(path);
     return Padding(
       padding: const EdgeInsets.only(left: 24, top: 2),
       child: Column(
@@ -314,7 +358,7 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => setState(() {
-              if (!_previewed.remove(rule.target)) _previewed.add(rule.target);
+              if (!_previewed.remove(path)) _previewed.add(path);
             }),
             child: Row(
               children: [
@@ -327,18 +371,14 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
                 Text(
                   name,
                   style: TextStyle(
-                    color: rule.exists ? AppColors.textFaint : AppColors.text,
+                    color: exists ? AppColors.textFaint : AppColors.text,
                     fontSize: 12.5,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    rule.exists
-                        ? fork.cursorImportRuleExists
-                        : rule.alwaysNow
-                        ? fork.cursorImportRuleAlways
-                        : '',
+                    exists ? fork.cursorImportRuleExists : note,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: AppColors.textFaint,
@@ -360,7 +400,7 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
               ),
               child: SingleChildScrollView(
                 child: SelectableText(
-                  rule.text,
+                  text,
                   style: TextStyle(
                     color: AppColors.textMuted,
                     fontSize: 11.5,

@@ -10,7 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
 /// A project's Cursor setup brought over: its rules as Claude Code's, its
-/// MCP servers into .mcp.json, nothing the project has overwritten.
+/// skills as they are, its MCP servers into .mcp.json, nothing the project
+/// has overwritten.
 void main() {
   group('a rule', () {
     test('always applied: its text alone', () {
@@ -89,6 +90,20 @@ void main() {
       write(p.join(root, '.cursorrules'), 'Old rules.\n');
       write(p.join(root, '.claude', 'rules', 'style.md'), 'Mine.\n');
       write(
+        p.join(root, '.cursor', 'skills', 'deploy', 'SKILL.md'),
+        '---\nname: deploy\ndescription: Ship the app\n---\nRun it.\n',
+      );
+      write(
+        p.join(root, '.cursor', 'skills', 'deploy', 'scripts', 'go.sh'),
+        'echo go\n',
+      );
+      write(
+        p.join(root, '.cursor', 'skills', 'review', 'SKILL.md'),
+        '---\nname: review\ndescription: Theirs\n---\n',
+      );
+      write(p.join(root, '.cursor', 'skills', 'notes.md'), 'Not a skill.\n');
+      write(p.join(root, '.claude', 'skills', 'review', 'SKILL.md'), 'Mine.\n');
+      write(
         p.join(root, '.cursor', 'mcp.json'),
         jsonEncode({
           'mcpServers': {
@@ -149,6 +164,13 @@ void main() {
           ('.claude/rules/cursorrules.md', false),
         ],
       );
+      expect(
+        [
+          for (final skill in project.skills)
+            (skill.name, skill.description, skill.exists),
+        ],
+        [('deploy', 'Ship the app', false), ('review', 'Theirs', true)],
+      );
       expect(project.servers.keys, ['db']);
       expect(project.servers['db']!['env'], {'T': r'${T}'});
       expect(project.serversHad, ['web']);
@@ -161,15 +183,33 @@ void main() {
         'Mine.\n',
       );
       expect(
-        File(p.join(root, '.claude', 'rules', 'db', 'sql.md'))
-            .readAsStringSync(),
+        File(
+          p.join(root, '.claude', 'rules', 'db', 'sql.md'),
+        ).readAsStringSync(),
         startsWith('---\npaths:\n  - "**/*.sql"\n---'),
       );
 
+      expect(await project.importSkills(project.skills), [
+        p.join(root, '.claude', 'skills', 'deploy'),
+      ]);
+      final skills = p.join(root, '.claude', 'skills');
+      expect(
+        File(p.join(skills, 'deploy', 'scripts', 'go.sh')).readAsStringSync(),
+        'echo go\n',
+      );
+      expect(
+        File(p.join(skills, 'review', 'SKILL.md')).readAsStringSync(),
+        'Mine.\n',
+      );
+      expect(
+        Directory(skills).listSync().map((e) => p.basename(e.path)).toSet(),
+        {'deploy', 'review'},
+      );
+
       await project.importServers(project.servers.keys);
-      final mcp = jsonDecode(
-        File(p.join(root, '.mcp.json')).readAsStringSync(),
-      ) as Map<String, Object?>;
+      final mcp =
+          jsonDecode(File(p.join(root, '.mcp.json')).readAsStringSync())
+              as Map<String, Object?>;
       expect((mcp['mcpServers']! as Map).keys, containsAll(['web', 'db']));
       expect((mcp['mcpServers']! as Map)['web'], {
         'type': 'http',
@@ -199,7 +239,7 @@ void main() {
       unawaited(CursorImport.open(context, root));
       for (
         var i = 0;
-        i < 50 && find.byType(CursorImportDialog).evaluate().isEmpty;
+        i < 500 && find.byType(CursorImportDialog).evaluate().isEmpty;
         i++
       ) {
         await tester.runAsync(
@@ -209,13 +249,15 @@ void main() {
       }
       await tester.pump();
       expect(find.text('Rules: 2 → .claude/rules'), findsOneWidget);
+      expect(find.text('Skills: 1 → .claude/skills'), findsOneWidget);
+      expect(find.text('Ship the app'), findsOneWidget);
       expect(
         find.textContaining('MCP servers: 1 → .mcp.json (db)'),
         findsOneWidget,
       );
       expect(find.text('Already in .mcp.json: web'), findsOneWidget);
       expect(find.text('Conversations: 2 → memsearch memory'), findsOneWidget);
-      expect(find.text('exists, kept'), findsOneWidget);
+      expect(find.text('exists, kept'), findsNWidgets(2));
 
       await tester.tap(find.text('sql.md'));
       await tester.pump();
@@ -232,7 +274,16 @@ void main() {
         );
         await tester.pump();
       }
-      expect(find.text('Imported: 2 rules, 1 MCP servers.'), findsOneWidget);
+      expect(
+        find.text('Imported: 2 rules, 1 skills, 1 MCP servers.'),
+        findsOneWidget,
+      );
+      expect(
+        File(
+          p.join(root, '.claude', 'skills', 'deploy', 'SKILL.md'),
+        ).existsSync(),
+        isTrue,
+      );
       expect(
         File(p.join(root, '.claude', 'rules', 'cursorrules.md')).existsSync(),
         isTrue,

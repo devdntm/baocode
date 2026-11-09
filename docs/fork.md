@@ -277,6 +277,7 @@ tool/dev_app/build_dev_app.sh --skip-build # поставить то, что у�
 Части выбираются галочками:
 
 - **Правила.** `.cursor/rules/**/*.mdc` и `.cursorrules` переносятся в `.claude/rules/*.md`: `globs` становятся `paths:`, `alwaysApply` и `description` убираются. Правило, которое Cursor применял «по описанию», в Claude Code будет читаться всегда — мастер это помечает. Существующие файлы не перезаписываются; текст каждого правила можно раскрыть и посмотреть до импорта.
+- **Скиллы.** Папки `.cursor/skills/<имя>/` с `SKILL.md` копируются целиком в `.claude/skills/<имя>/`: формат у Cursor и Claude Code один, поэтому без изменений. Копия сначала собирается во временной папке рядом и затем переименовывается, так что оборванная копия не станет скиллом. Скилл, который уже есть в `.claude/skills`, не перезаписывается. Мастер показывает описание каждого скилла, а его `SKILL.md` можно раскрыть.
 - **MCP.** Из `.cursor/mcp.json` в `.mcp.json` добавляются только серверы, которых там ещё нет: `${env:X}` превращается в `${X}`, у сервера с `url` без `type` ставится `http`.
 - **История в memsearch.** Скрипт [`tool/cursor_import/cursor_memsearch_import.py`](../tool/cursor_import/cursor_memsearch_import.py) (бывший `~/.claude/scripts/cursor_memsearch_import.py`, с командой `count` и `CLAUDE_BIN`) работает в три этапа:
   - `summarize` пересказывает реплики Claude Haiku в кэш `.memsearch/cursor-import-cache`;
