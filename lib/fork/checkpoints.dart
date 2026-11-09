@@ -9,6 +9,7 @@
 import 'package:flutter/material.dart';
 
 import '../chat/widgets/hover_builder.dart';
+import '../ide/ide_hover.dart';
 import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
 import 'cursor_look.dart';
@@ -38,8 +39,9 @@ abstract interface class RestoresCheckpoints {
 /// How dim what a restore is to drop shows.
 const restoredDimming = 0.45;
 
-/// Under a message of the user's, while the pointer is over it: "Restore
-/// checkpoint", as Cursor's; asked first.
+/// Over a message of the user's, in its bottom right corner while the
+/// pointer is over it: Cursor's restore arrow, "Restore checkpoint" on
+/// hover; asked first.
 class CheckpointHover extends StatelessWidget {
   const CheckpointHover({
     super.key,
@@ -55,17 +57,15 @@ class CheckpointHover extends StatelessWidget {
     final restore = onRestore;
     if (restore == null || !ChatLook.isCursor) return child;
     return HoverBuilder(
-      builder: (context, hovered) => Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
+      builder: (context, hovered) => Stack(
         children: [
           child,
-          // Its room kept: the list does not move as the pointer comes.
-          SizedBox(
-            height: 22,
+          Positioned(
+            right: 10,
+            bottom: 8,
             child: Visibility.maintain(
               visible: hovered,
-              child: _RestoreLink(
+              child: _RestoreButton(
                 onTap: () async {
                   if (await confirmRestore(context)) restore();
                 },
@@ -104,35 +104,36 @@ class CheckpointHover extends StatelessWidget {
       false;
 }
 
-class _RestoreLink extends StatelessWidget {
-  const _RestoreLink({required this.onTap});
+/// The arrow back, as Cursor's: faint, brighter on a light ground under
+/// the pointer.
+class _RestoreButton extends StatelessWidget {
+  const _RestoreButton({required this.onTap});
 
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => HoverBuilder(
-    cursor: SystemMouseCursors.click,
-    builder: (context, hovered) => GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 4, right: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
+  Widget build(BuildContext context) => IdeHover(
+    message: 'Restore checkpoint',
+    child: Semantics(
+      button: true,
+      label: 'Restore checkpoint',
+      child: HoverBuilder(
+        cursor: SystemMouseCursors.click,
+        builder: (context, hovered) => GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: hovered ? AppColors.hover : null,
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Icon(
               Codicons.discard,
-              size: 12,
+              size: 15,
               color: hovered ? AppColors.text : AppColors.textMuted,
             ),
-            const SizedBox(width: 4),
-            Text(
-              'Restore checkpoint',
-              style: TextStyle(
-                fontSize: 12,
-                color: hovered ? AppColors.text : AppColors.textMuted,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     ),

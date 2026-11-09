@@ -25,7 +25,7 @@ void main() {
 
   testWidgets('under BaoCode\'s look, none', (tester) async {
     await _pump(tester, () {});
-    expect(find.text('Restore checkpoint'), findsNothing);
+    expect(find.bySemanticsLabel('Restore checkpoint'), findsNothing);
   });
 
   testWidgets('Cursor\'s: shown while the pointer is over the message; '
@@ -33,7 +33,7 @@ void main() {
     ChatLook.current.value = ChatLook.cursor;
     var restored = 0;
     await _pump(tester, () => restored++);
-    final link = find.text('Restore checkpoint');
+    final link = find.bySemanticsLabel('Restore checkpoint');
     expect(
       tester
           .widget<Visibility>(
@@ -73,6 +73,6 @@ void main() {
   testWidgets('no checkpoint, no link', (tester) async {
     ChatLook.current.value = ChatLook.cursor;
     await _pump(tester, null);
-    expect(find.text('Restore checkpoint'), findsNothing);
+    expect(find.bySemanticsLabel('Restore checkpoint'), findsNothing);
   });
 }
