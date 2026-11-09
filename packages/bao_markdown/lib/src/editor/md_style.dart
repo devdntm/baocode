@@ -49,6 +49,10 @@ class MarkdownEditorStyle {
     this.colorOf = _cssColor,
     this.table,
     this.blank,
+    this.codePadding = 0,
+    this.bullet,
+    this.listGap = 0,
+    this.itemGap = 0,
   });
 
   /// The text's: its font, size, line height and color.
@@ -115,6 +119,19 @@ class MarkdownEditorStyle {
   /// page's margin does (fork, `chat.look`); as tall as text where null.
   final TextStyle? blank;
 
+  /// Room either side of `` `code` `` on its ground (fork, `chat.look`):
+  /// the ground as a pill about its text; none at 0.
+  final double codePadding;
+
+  /// A bullet's, over its line's (fork): bigger, say.
+  final TextStyle? bullet;
+
+  /// Room over a list a paragraph's line runs into, and under one a
+  /// paragraph follows straight on (fork): a page's list margin; and
+  /// between its items ([itemGap]).
+  final double listGap;
+  final double itemGap;
+
   MdTableStyle get tableStyle =>
       table ??
       MdTableStyle(
@@ -162,6 +179,10 @@ class MarkdownEditorStyle {
     Color? Function(String css)? colorOf,
     MdTableStyle? table,
     TextStyle? blank,
+    double? codePadding,
+    TextStyle? bullet,
+    double? listGap,
+    double? itemGap,
   }) => MarkdownEditorStyle(
     text: text ?? this.text,
     headings: headings ?? this.headings,
@@ -193,6 +214,10 @@ class MarkdownEditorStyle {
     colorOf: colorOf ?? this.colorOf,
     table: table ?? this.table,
     blank: blank ?? this.blank,
+    codePadding: codePadding ?? this.codePadding,
+    bullet: bullet ?? this.bullet,
+    listGap: listGap ?? this.listGap,
+    itemGap: itemGap ?? this.itemGap,
   );
 
   @override
@@ -227,7 +252,11 @@ class MarkdownEditorStyle {
       other.placeholder == placeholder &&
       other.colorOf == colorOf &&
       other.table == table &&
-      other.blank == blank;
+      other.blank == blank &&
+      other.codePadding == codePadding &&
+      other.bullet == bullet &&
+      other.listGap == listGap &&
+      other.itemGap == itemGap;
 
   @override
   int get hashCode => Object.hashAll([
@@ -261,6 +290,10 @@ class MarkdownEditorStyle {
     colorOf,
     table,
     blank,
+    codePadding,
+    bullet,
+    listGap,
+    itemGap,
   ]);
 }
 

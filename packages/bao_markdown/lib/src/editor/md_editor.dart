@@ -164,6 +164,9 @@ typedef _RowKey = (
   String? source,
   int definitions,
   int look,
+  // fork: room over the line, a list's margin (MarkdownEditorStyle
+  // .listGap, .itemGap).
+  double gap,
 );
 
 class MarkdownEditorState extends State<MarkdownEditor>
@@ -547,7 +550,30 @@ class MarkdownEditorState extends State<MarkdownEditor>
       source,
       info.hasInline ? controller.blocks.definitionsVersion : 0,
       _look,
+      _gapOver(index, info),
     );
+  }
+
+  /// fork: the room over [index]'s line as a page has a list's margins: over
+  /// a list a paragraph's line runs into, under one a paragraph follows
+  /// straight on ([MarkdownEditorStyle.listGap]), between its items
+  /// ([MarkdownEditorStyle.itemGap]).
+  double _gapOver(int index, MdLineInfo info) {
+    final style = widget.style;
+    if ((style.listGap == 0 && style.itemGap == 0) || index == 0) return 0;
+    final above = controller.infoOf(index - 1).kind;
+    final item = info.kind == MdLineKind.item;
+    if (item && above == MdLineKind.item) return style.itemGap;
+    if (item && above == MdLineKind.paragraph && info.level <= 1) {
+      // A paragraph's line, not an item's own text going on.
+      return controller.infoOf(index - 1).level == 0 ? style.listGap : 0;
+    }
+    if (info.kind == MdLineKind.paragraph &&
+        info.level == 0 &&
+        above == MdLineKind.item) {
+      return style.listGap;
+    }
+    return 0;
   }
 
   Widget _row(BuildContext context, int index) {
@@ -721,7 +747,12 @@ class MarkdownEditorState extends State<MarkdownEditor>
           padding: const EdgeInsets.only(right: 8),
           child: Align(
             alignment: Alignment.centerRight,
-            child: widget.embeds.bullet(context, info.level, lineStyle),
+            // fork: the bullet's own style (MarkdownEditorStyle.bullet).
+            child: widget.embeds.bullet(
+              context,
+              info.level,
+              lineStyle.merge(style.bullet),
+            ),
           ),
         );
       }
@@ -819,6 +850,13 @@ class MarkdownEditorState extends State<MarkdownEditor>
           child: content,
         );
       }
+    }
+    // fork: a list's margin over it (_gapOver).
+    if (key.$11 > 0) {
+      content = Padding(
+        padding: EdgeInsets.only(top: key.$11),
+        child: content,
+      );
     }
     return (KeyedSubtree(key: ValueKey(id), child: content), display);
   }

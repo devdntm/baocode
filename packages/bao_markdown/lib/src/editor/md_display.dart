@@ -330,6 +330,14 @@ class _Builder {
         inner = inner.copyWith(backgroundColor: ground);
       }
     }
+    // fork: room either side of code on its ground (MarkdownEditorStyle
+    // .codePadding), shown, not written.
+    final padded =
+        run.kind == MdInlineKind.code &&
+        !revealed &&
+        style.codePadding > 0 &&
+        _ground != null;
+    if (padded) _pad(run.innerStart, inner);
     switch (run.kind) {
       case MdInlineKind.code ||
           MdInlineKind.math ||
@@ -340,8 +348,29 @@ class _Builder {
       default:
         runs(run.innerStart, run.innerEnd, run.children, inner);
     }
+    if (padded) _pad(run.innerEnd, inner);
     _ground = outer;
     mark(run.innerEnd, run.end, MdPieceKind.closer);
+  }
+
+  /// fork: [MarkdownEditorStyle.codePadding] of room at column [at], on the
+  /// code's ground: a no-break space of a monospaced font (0.6 em wide) at
+  /// the size that makes it that wide.
+  void _pad(int at, TextStyle code) {
+    _spans.add(
+      MdGroundSpan(
+        text: '\u00A0',
+        style: code.copyWith(
+          fontSize: style.codePadding / 0.6,
+          letterSpacing: 0,
+          height: 1,
+        ),
+        ground: _ground!,
+      ),
+    );
+    _pieces.add(MdPiece(MdPieceKind.extra, at, at, _shown, _shown + 1));
+    _shown++;
+    _endsInWidget = false;
   }
 
   TextStyle _styleOf(MdInline run, TextStyle parent) {

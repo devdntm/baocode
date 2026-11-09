@@ -73,9 +73,11 @@ void main() {
     expect(cursor.text.fontSize, CursorType.textSize);
     expect(cursor.text.height, CursorType.textHeight);
     expect(cursor.text.letterSpacing, closeTo(CursorType.tracking(14), 1e-9));
-    expect(cursor.heading(1).fontSize, 17);
-    expect(cursor.heading(3).fontSize, 14);
-    expect(cursor.bold.fontWeight, FontWeight.w500);
+    expect(cursor.heading(2).fontSize, 20);
+    expect(cursor.heading(2).fontWeight, FontWeight.w700);
+    expect(cursor.bold.fontWeight, FontWeight.w600);
+    expect(cursor.codePadding, closeTo(3.6, 1e-9));
+    expect(cursor.listGap, CursorType.gap);
     expect(cursor.code.letterSpacing, 0);
     expect(
       cursor.text.merge(cursor.blank).fontSize! *

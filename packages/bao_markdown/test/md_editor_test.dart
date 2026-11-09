@@ -102,6 +102,38 @@ Future<void> _type(WidgetTester tester, String text) async {
 }
 
 void main() {
+  // fork: inline code's room either side, a list's margins (docs/fork.md).
+  testWidgets('code padded on its ground; the source as written', (
+    tester,
+  ) async {
+    final controller = MarkdownController(text: 'a `b` c');
+    await _pump(
+      tester,
+      controller,
+      style: _style.copyWith(codePadding: 4, code: const TextStyle()),
+    );
+    final shown = _shown(tester).single;
+    expect(shown, 'a \u00A0b\u00A0 c');
+    expect(controller.text, 'a `b` c');
+  });
+
+  testWidgets('a list a paragraph runs into has room over it; its items '
+      'room between', (tester) async {
+    double top(String text) =>
+        tester.getRect(find.text(text, findRichText: true)).top;
+    final controller = MarkdownController(text: 'p\n- a\n- b\nq');
+    await _pump(tester, controller);
+    final plain = [top('p'), top('a'), top('b'), top('q')];
+    await _pump(
+      tester,
+      MarkdownController(text: 'p\n- a\n- b\nq'),
+      style: _style.copyWith(listGap: 10, itemGap: 2),
+    );
+    expect(top('a') - top('p'), closeTo(plain[1] - plain[0] + 10, 0.5));
+    expect(top('b') - top('a'), closeTo(plain[2] - plain[1] + 2, 0.5));
+    expect(top('q') - top('b'), closeTo(plain[3] - plain[2] + 10, 0.5));
+  });
+
   // fork: a shorter empty line where the style has one (docs/fork.md).
   testWidgets('an empty line as high as its style says, others as before', (
     tester,

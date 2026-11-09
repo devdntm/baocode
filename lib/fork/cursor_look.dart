@@ -135,11 +135,9 @@ abstract final class CursorType {
   /// under BaoCode's.
   static MarkdownEditorStyle markdown(MarkdownEditorStyle style) {
     if (!ChatLook.isCursor) return style;
-    final heading = TextStyle(
-      fontWeight: FontWeight.w600,
-      color: AppColors.textPrimary,
-      height: headingHeight,
-    );
+    // As Cursor's preview, measured on it: headings bolder and bigger than
+    // the chat's (20 for `##`), on tight lines; bold semibold.
+    const heading = TextStyle(fontWeight: FontWeight.w700, height: 1.25);
     return style.copyWith(
       text: style.text.merge(
         TextStyle(
@@ -149,20 +147,38 @@ abstract final class CursorType {
         ),
       ),
       headings: [
-        for (final size in headingSizes)
-          heading.copyWith(fontSize: size, letterSpacing: tracking(size)),
+        for (final size in markdownHeadingSizes)
+          // In the text's color, as Cursor's.
+          heading.copyWith(
+            fontSize: size,
+            color: AppColors.text,
+            letterSpacing: tracking(size),
+          ),
       ],
       // With the empty line before it, 16 over a heading; after it, the
       // empty line alone.
       headingSpacing: const [(6, 0), (6, 0), (6, 0), (6, 0), (6, 0)],
       // No line under the big headings, as Cursor's (none to set back).
       headingRule: const Color(0x00000000),
-      bold: strong,
+      bold: const TextStyle(fontWeight: FontWeight.w600),
       code: inlineCode,
       codeBackground: inlineCodeBackground,
       blank: const TextStyle(fontSize: textSize, height: gap / textSize),
+      // As Cursor's: 0.3 em either side of inline code on its pill.
+      codePadding: 12 * 0.3,
+      // Its lists: a disc of the text's size, the text 20 in, each level
+      // 20 further; 10 over and under a list, 2 between items.
+      bullet: const TextStyle(fontSize: 17, height: textSize * textHeight / 17),
+      bulletWidth: 20,
+      listIndent: 20,
+      listGap: gap,
+      itemGap: listItemGap,
     );
   }
+
+  /// A markdown preview's `h1` to `h6` (Cursor's preview: bigger than the
+  /// chat's).
+  static const markdownHeadingSizes = [24.0, 20.0, 16.0, 14.0, 14.0, 14.0];
 
   /// A list's items are indented 28, their marker in the middle of that;
   /// 2 between them (`--cursor-spacing-0-5`).
