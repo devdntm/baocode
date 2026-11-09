@@ -20,6 +20,7 @@ import 'review/change_review.dart';
 import 'review/review_store.dart';
 // fork: Cursor's checkpoints (docs/fork.md).
 import '../fork/checkpoints.dart';
+import '../fork/browser/fork_browser.dart';
 
 /// Opens the review of a project's changes (see [ChangeReview.open]).
 typedef ChangeReviewOpener = Future<ChangeReview?> Function(
@@ -213,6 +214,15 @@ class ChatSession extends ChangeNotifier
       _renamed = title;
       notifyListeners();
       return;
+    }
+    // fork: the browser's page opens as the agent starts in the browser,
+    // once a turn, as Cursor's (lib/fork/browser/).
+    switch (event) {
+      case ItemUpserted(item: ToolCallItem(kind: ToolKind.browser)):
+        ForkBrowser.agentInBrowser(this);
+      case TurnEnded():
+        ForkBrowser.turnEnded(this);
+      default:
     }
     if (event is KernelInfoChanged || _transcript.apply(event)) {
       _cache.clear();

@@ -31,6 +31,19 @@ void main() {
     expect(FileViews.of('/project/Browser'), isNull);
   });
 
+  test('an agent in the browser opens the page once a turn, only where '
+      'it is offered', () async {
+    final started = <Object>[];
+    final sub = ForkBrowser.started.listen(started.add);
+    addTearDown(sub.cancel);
+    final session = Object();
+    // Not offered under test (no browser connected): nothing opens.
+    ForkBrowser.agentInBrowser(session);
+    await Future<void>.delayed(Duration.zero);
+    expect(started, isEmpty);
+    ForkBrowser.turnEnded(session);
+  });
+
   testWidgets('the page says no browser is connected, under test', (
     tester,
   ) async {

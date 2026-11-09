@@ -117,7 +117,7 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/chat/composer/composer_picker.dart` | `_buildPill`: режим — `CursorModePill` при `chat.look: cursor` |
 | `lib/chat/chat_screen.dart` | `_footUnder`: в IDE ветка и размер контекста под полем ввода; `RunCommandPanel` вместо `InteractionPanel` для вопроса approve-blocked |
 | `lib/chat/widgets/command_step.dart` | `CursorCommandCard` при `chat.look: cursor` |
-| `lib/chat/chat_session.dart` | `RestoresCheckpoints`: `canRestoreAt`, `restoreCheckpoint`, `revertFilesFrom`, `restoredAt` (в `send` — с места чекпоинта); `ChangesReverted` перечитывает ревью |
+| `lib/chat/chat_session.dart` | `ForkBrowser.agentInBrowser`/`turnEnded` в `_apply` (страница браузера открывается сама); `RestoresCheckpoints`: `canRestoreAt`, `restoreCheckpoint`, `revertFilesFrom`, `restoredAt` (в `send` — с места чекпоинта); `ChangesReverted` перечитывает ревью |
 | `lib/chat/chat_history_view.dart` | `CheckpointHover` под сообщением, бледные строки после чекпоинта, вопрос в `_submitEdit` |
 | `lib/chat/widgets/shell_highlight.dart` | `shellPrograms`: программы команды для заголовка карточки |
 | `lib/chat/step_folds.dart` | `isQuickStep`: команды не сворачиваются в «Ran N commands» при `chat.look: cursor` |
@@ -374,6 +374,11 @@ Upstream убрал её из боковой панели в 1.9.0 (`b19154e8`, 
   нет): View: Open Browser в палитре.
 - **Шаг браузера в чате** — правый клик «Show in Browser Tab»: вкладка в IDE,
   в окне агентов — раздел боковой панели.
+- **Открывается сама**, как у Cursor: первый шаг `browser_*` агента за ход
+  (`ChatSession` → `ForkBrowser.agentInBrowser`) открывает страницу там, где
+  окно показывает эту беседу — вкладку в IDE (`View: Open Browser`, фокус
+  остаётся в поле ввода) или раздел боковой панели в окне агентов. Раз за
+  ход: закрытая посреди хода, до следующего не появится.
 
 ## Встроенная тема Cursor Dark Midnight
 

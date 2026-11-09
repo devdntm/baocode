@@ -57,6 +57,25 @@ abstract final class ForkBrowser {
     }
   }
 
+  static final _started = StreamController<Object>.broadcast();
+
+  /// The conversations (their sessions) an agent of which began to work in
+  /// the browser this turn: the window that shows one opens the page, as
+  /// Cursor does ([agentInBrowser]).
+  static Stream<Object> get started => _started.stream;
+
+  static final Set<Object> _openedFor = {};
+
+  /// A browser step of [session]'s agent came: the page opens, once a
+  /// turn (closed meanwhile, it stays closed till the next).
+  static void agentInBrowser(Object session) {
+    if (!offered || !_openedFor.add(session)) return;
+    _started.add(session);
+  }
+
+  /// [session]'s turn ended: its next browser step opens the page again.
+  static void turnEnded(Object session) => _openedFor.remove(session);
+
   /// The IDE's tab of the page: a path no file has, its name the tab's.
   static const idePath = '/.baocode-browser/Browser';
 

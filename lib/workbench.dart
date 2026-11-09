@@ -626,6 +626,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       ForkBrowserContribution.registerView();
       ForkBrowser.revealInPanel = () =>
           _showSidePanelSection(SidePanelSection.browser);
+      _browserStarts = ForkBrowser.started.listen(_agentInBrowser);
       // fork: where a plan's to-dos run (lib/plan/plan_sessions.dart).
       PlanSessions.of = _planSession;
       PlanSessions.created = _newPlanSession;
@@ -855,6 +856,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
 
   @override
   void dispose() {
+    // fork: the browser's page (lib/fork/browser/).
+    unawaited(_browserStarts?.cancel());
     ChannelGate.current?.removeListener(_channelGateChanged);
     for (final edits in _ideAgentEdits.values) {
       edits.dispose();
@@ -3947,6 +3950,26 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         ),
       ),
     );
+  }
+
+  // fork: the browser's page opens where this window shows the
+  // conversation whose agent began in the browser (lib/fork/browser/).
+  StreamSubscription<Object>? _browserStarts;
+
+  void _agentInBrowser(Object session) {
+    if (_showsIde &&
+        _workspace
+            .ideChats(_ideFolder)
+            .any((thread) => identical(thread.session, session))) {
+      // Its tab, the input keeping the focus (View: Open Browser).
+      _ide?.runCommand(ForkBrowserContribution.openId);
+      return;
+    }
+    if (_showsIde) return;
+    final thread = _agentThread ?? _workspace.current;
+    if (thread != null && identical(thread.session, session)) {
+      _sidePanel.showSection(thread.session, SidePanelSection.browser);
+    }
   }
 
   void _showSidePanelSection(SidePanelSection section) {
