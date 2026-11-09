@@ -12,26 +12,22 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:yaml/yaml.dart';
 
 import '../chat/chat_session.dart';
 import '../chat/side_panel/file_open.dart';
 import '../chat/widgets/hover_builder.dart';
-import '../chat/widgets/tool_call_row.dart'
-    show todoDoingIcon, todoDoneIcon, todoOpenIcon;
 import '../fork/fork_strings.dart';
 import '../ide/ide_hover.dart';
 import '../ide/ide_input.dart';
 import '../ide/ide_menu.dart';
-import '../ide/ide_spinning.dart';
 import '../kernel/claude_code/claude_code_translator.dart';
 import '../platform/data_dir.dart' show writeFileAtomically;
 import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
-import '../theme/workbench_theme.dart' show themeColors;
 import 'plan_sessions.dart';
 import 'plan_todos.dart';
+import 'todo_status_icons.dart';
 
 /// What a plan's markdown preview has of its own.
 abstract final class PlanPreview {
@@ -428,6 +424,7 @@ class _PlanTodosBlockState extends State<PlanTodosBlock> {
                 for (final state in PlanTodoState.values)
                   IdeMenuAction(
                     fork.planState(state),
+                    icon: TodoStatusIcons.of(state),
                     checked: todo.state == state,
                     onSelected: () => unawaited(
                       _change((doc) => doc.withState(todo.id, state)),
@@ -609,28 +606,20 @@ class _TodoRow extends StatelessWidget {
 
   Widget _status(BuildContext context) {
     final fork = context.fork;
-    Widget svg(String icon, Color color) => SvgPicture.asset(
-      icon,
-      width: 16,
-      height: 16,
-      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-    );
     final (Widget icon, String? hint) = switch (status) {
-      PlanTodoStatus.open => (svg(todoOpenIcon, AppColors.textFaint), null),
+      // As Cursor's (todo_status_icons.dart): outlines in the faint color.
+      PlanTodoStatus.open => (TodoStatusIcons.pending(), null),
       PlanTodoStatus.queued => (
         Icon(Codicons.clock, size: 15, color: AppColors.textFaint),
         fork.planQueued,
       ),
       PlanTodoStatus.running => (
-        IdeSpinning(svg(todoDoingIcon, themeColors['charts.blue'])),
+        TodoStatusIcons.inProgress(),
         fork.planRunning,
       ),
-      PlanTodoStatus.done => (
-        svg(todoDoneIcon, themeColors['charts.green']),
-        fork.planDone,
-      ),
+      PlanTodoStatus.done => (TodoStatusIcons.completed(), fork.planDone),
       PlanTodoStatus.cancelled => (
-        Icon(Codicons.circleSlash, size: 15, color: AppColors.textFaint),
+        TodoStatusIcons.cancelled(),
         fork.planCancelled,
       ),
     };

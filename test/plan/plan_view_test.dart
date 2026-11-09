@@ -272,8 +272,11 @@ void main() {
     expect(
       find.descendant(
         of: row('two'),
+        // fork: Cursor's dashed circle (lib/plan/todo_status_icons.dart).
         matching: find.byWidgetPredicate(
-          (widget) => widget.runtimeType.toString() == 'IdeSpinning',
+          (widget) =>
+              widget is CustomPaint &&
+              widget.painter.runtimeType.toString() == '_DashedCircle',
         ),
       ),
       findsOneWidget,
