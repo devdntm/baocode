@@ -135,17 +135,27 @@ class _CursorWorkbenchGridState extends State<CursorWorkbenchGrid> {
         );
 
   /// The chat, which keeps its state as it moves to the editor's place,
-  /// maximized, and back: its tabs over its card. No row under it: the
-  /// status bar is under all.
+  /// maximized, and back: its tabs over its card. Beside the editor it goes
+  /// down to the window's foot, its row there in the status bar's: its
+  /// branch and how full its context is, as a chat's window has them
+  /// (WorkbenchGrid's `_chatPart`). In the editor's place, no row: the
+  /// status bar is under it.
   Widget _chatPart() => Padding(
     key: _chatKey,
     padding: EdgeInsets.symmetric(horizontal: WorkbenchStyle.gap / 2),
-    child: HeadedIsland(
-      header: IdeTabStrip.height,
-      color: AppColors.code,
-      // Beside the editor, its line on its right.
-      border: _layout.editorVisible ? Border(right: SideBarPart.line) : null,
-      child: Focus(focusNode: _service.chatFocus, child: widget.options.chat),
+    // The branch and the meter side by side, as in a chat's window.
+    child: IslandFootTrailing(
+      trailing: null,
+      child: HeadedIsland(
+        header: IdeTabStrip.height,
+        footer: _layout.editorVisible ? Islands.belowHeight : 0,
+        color: AppColors.code,
+        // Beside the editor, its line on its right.
+        border: _layout.editorVisible ? Border(right: SideBarPart.line) : null,
+        footerLine: IdeStatusBar.line,
+        footerColor: themeColors.get('statusBar.background'),
+        child: Focus(focusNode: _service.chatFocus, child: widget.options.chat),
+      ),
     ),
   );
 
@@ -354,16 +364,30 @@ class _CursorWorkbenchGridState extends State<CursorWorkbenchGrid> {
     }
 
     final language = _services.get<LanguageService>();
-    final statusBar = ListenableBuilder(
-      listenable: language,
-      builder: (context, _) => ListenableBuilder(
-        listenable: workbenchStatusChanges(_services, widget.options),
-        builder: (context, _) {
-          final bar = workbenchStatusBar(context, _services, widget.options);
-          return IdeStatusBar(left: bar.left, right: bar.right);
-        },
-      ),
-    );
+    // The status bar's items: [part] of them, `left`, `right` or `all`.
+    Widget statusBar({bool left = true, bool right = true}) =>
+        ListenableBuilder(
+          listenable: language,
+          builder: (context, _) => ListenableBuilder(
+            listenable: workbenchStatusChanges(_services, widget.options),
+            builder: (context, _) {
+              final bar = workbenchStatusBar(
+                context,
+                _services,
+                widget.options,
+              );
+              return IdeStatusBar(
+                left: left ? bar.left : const [],
+                right: right ? bar.right : const [],
+              );
+            },
+          ),
+        );
+    // Beside the editor the chat goes down to the window's foot, its own
+    // row in the status bar's: the bar's left items under the chats, its
+    // right ones under the rest (the left too, the chats hidden).
+    final chatToFoot = !editorHidden && chatVisible;
+    final statusUnderChats = chatToFoot && agents > 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -380,10 +404,18 @@ class _CursorWorkbenchGridState extends State<CursorWorkbenchGrid> {
                         const ValueKey('ide-agents'),
                         agents,
                         agents > 0 ? agents : _cursor.agentsWidth,
-                        Container(
-                          color: themeColors['sideBar.background'],
-                          foregroundDecoration: _line(right: true),
-                          child: list,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: Container(
+                                color: themeColors['sideBar.background'],
+                                foregroundDecoration: _line(right: true),
+                                child: list,
+                              ),
+                            ),
+                            if (statusUnderChats) statusBar(right: false),
+                          ],
                         ),
                       ),
                     if (!editorHidden)
@@ -393,8 +425,23 @@ class _CursorWorkbenchGridState extends State<CursorWorkbenchGrid> {
                         chatVisible ? columns.chat : _service.chatWidth,
                         _chatPart(),
                       ),
-                    middle,
-                    if (sidebarVisible && !gitLog) sideColumn,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                middle,
+                                if (sidebarVisible && !gitLog) sideColumn,
+                              ],
+                            ),
+                          ),
+                          if (chatToFoot) statusBar(left: !statusUnderChats),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -411,7 +458,7 @@ class _CursorWorkbenchGridState extends State<CursorWorkbenchGrid> {
             ],
           ),
         ),
-        statusBar,
+        if (!chatToFoot) statusBar(),
       ],
     );
   }

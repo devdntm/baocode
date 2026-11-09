@@ -177,7 +177,8 @@ void main() {
   });
 
   testWidgets('left to right: the chats, the chat, the editor, the side bar '
-      'under the views\' row; the status bar under all', (tester) async {
+      'under the views\' row; the chat down to the foot, the status bar '
+      'either side of it', (tester) async {
     await pumpCursor(tester);
     final agents = tester.getRect(_agents);
     final chat = tester.getRect(_chat);
@@ -201,11 +202,36 @@ void main() {
     expect(bar.top, sidebar.top);
     expect(bar.height, lessThan(60));
 
+    // The chat's own row in the status bar's (its branch and context, as a
+    // chat's window has them): the bar's left items under the chats, its
+    // right ones under the editor and the side bar.
+    final bars = [
+      for (final element in find.byType(IdeStatusBar).evaluate())
+        tester.getRect(find.byWidget(element.widget)),
+    ]..sort((a, b) => a.left.compareTo(b.left));
+    expect(bars, hasLength(2));
+    expect(bars.first.left, 0);
+    expect(bars.first.right, agents.right);
+    expect(bars.last.left, editor.left);
+    expect(bars.last.right, 1600);
+    for (final bar in bars) {
+      expect(bar.bottom, 900);
+    }
+    expect(chat.bottom, 900);
+    expect(editor.bottom, bars.last.top);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the chat maximized: the status bar under all again', (
+    tester,
+  ) async {
+    final workspace = await pumpCursor(tester);
+    workspace.layout.resize(sidebar: false, chat: true, editorHidden: true);
+    await tester.pump();
+    await tester.pump();
     final status = tester.getRect(find.byType(IdeStatusBar));
     expect(status.left, 0);
     expect(status.width, 1600);
-    expect(status.bottom, 900);
-    expect(chat.bottom, status.top);
     expect(tester.takeException(), isNull);
   });
 
