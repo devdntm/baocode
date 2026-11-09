@@ -22,6 +22,9 @@ import '../../kernel/kernel_types.dart';
 import '../floating/floating_layer.dart';
 import '../floating/floating_placement.dart';
 import '../floating/floating_registry.dart';
+// fork: chat.look (docs/fork.md).
+import '../../fork/cursor_look.dart';
+import '../../fork/mode_pill.dart';
 
 /// Compact pill that opens a menu of [options], e.g. the mode or model.
 ///
@@ -784,6 +787,18 @@ class ComposerPickerState extends State<ComposerPicker> {
   }
 
   Widget _buildPill(bool hovered, bool open) {
+    // fork: chat.look, the mode's pill as Cursor's (docs/fork.md).
+    if (widget.emphasized && ChatLook.isCursor && !widget.selected.caution) {
+      return CursorModePill(
+        icon:
+            widget.selected.iconBuilder ??
+            (size, color) =>
+                Icon(widget.selected.icon, size: size, color: color),
+        label: widget.label ?? widget.selected.label,
+        hovered: hovered,
+        open: open,
+      );
+    }
     final colors = themeColors;
     final emphasized = widget.emphasized;
     final color = widget.selected.caution

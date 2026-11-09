@@ -106,6 +106,7 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/chat/widgets/markdown_view.dart` | `baseStyle`/`codeStyle` Cursor; `MarkdownOptions.chat()` и `cursorLook`: отступы блоков, заголовки, жирный, списки, отступы вокруг встроенного кода |
 | `lib/chat/widgets/inline_code.dart` | плашка встроенного кода Cursor: цвет, радиус, одна на строку |
 | `lib/chat/composer/composer.dart` | `_minEditorHeight`: на строку ниже при `chat.look: cursor` |
+| `lib/chat/composer/composer_picker.dart` | `_buildPill`: режим — `CursorModePill` при `chat.look: cursor` |
 | `lib/chat/chat_screen.dart` | `_footUnder`: в IDE ветка и размер контекста под полем ввода; `RunCommandPanel` вместо `InteractionPanel` для вопроса approve-blocked |
 | `lib/chat/widgets/command_step.dart` | `CursorCommandCard` при `chat.look: cursor` |
 | `lib/chat/widgets/shell_highlight.dart` | `shellPrograms`: программы команды для заголовка карточки |
@@ -283,7 +284,9 @@ CSS самого Cursor (`/Applications/Cursor.app/.../workbench.*.css`, `.rende
 - **Чат:** 14/22,4; абзацы через 10, заголовки 17/17/14/13 с 16 до и 4 после;
   жирный — medium в цвете текста; встроенный код — Menlo 12 на плашке цвета
   текста (8%), отступ 0,3 em, радиус 4; списки с отступом 28.
-- **Поле ввода** на строку ниже: текст сразу над кнопками.
+- **Поле ввода** на строку ниже: текст сразу над кнопками. Режим (Agent, Ask,
+  Plan) — круглая плашка цвета текста без рамки, надпись и иконка светлые
+  ([`mode_pill.dart`](../lib/fork/mode_pill.dart), `ComposerPicker._buildPill`).
 - **IDE:** колонка чата доходит до низа окна, и в ряду статус-бара под ней —
   ветка и «146K / 1M», как в режиме чата (левые пункты статус-бара — под списком
   чатов, правые — под редактором; `cursor_grid.dart`, `_chatPart`); чат на месте
