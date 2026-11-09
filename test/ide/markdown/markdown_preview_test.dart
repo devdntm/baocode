@@ -9,6 +9,7 @@ import 'package:baocode/theme/app_theme.dart';
 import 'package:baocode/theme/codicons.dart';
 import 'package:baocode/theme/ui_zoom.dart';
 import 'package:flutter/gestures.dart';
+import 'package:baocode/fork/cursor_look.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -55,9 +56,10 @@ Future<FakeHost> pumpPreview(
   WidgetTester tester,
   EditorDocumentModel model, {
   bool readOnly = false,
+  double width = 1000,
 }) async {
   final host = FakeHost();
-  tester.view.physicalSize = const Size(1000, 700);
+  tester.view.physicalSize = Size(width, 700);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
@@ -120,6 +122,25 @@ Offset _at(WidgetTester tester, String text, {String? within, int index = 0}) {
 }
 
 void main() {
+  // fork: chat.look, a table as wide as the preview (docs/fork.md).
+  testWidgets('under Cursor\'s look a table fits a narrow preview, its long '
+      'words broken', (tester) async {
+    ChatLook.current.value = ChatLook.cursor;
+    addTearDown(() => ChatLook.current.value = ChatLook.baocode);
+    await pumpPreview(
+      tester,
+      EditorDocumentModel(
+        'Text.\n\n| Шаг | Коммит | Что | На что смотреть |\n'
+        '| - | - | - | - |\n'
+        '| 1 | `0b544ba` | склейка перевыставлений в архиве | '
+        'эффект на СМА, скорее всего, нулевой (данные уже склеены) |\n',
+      ),
+      width: 330,
+    );
+    final table = tester.getRect(find.byType(Table));
+    expect(table.right, lessThanOrEqualTo(330 - 32 + 1));
+    expect(tester.takeException(), isNull);
+  });
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() async => _png = await _createPng());
 

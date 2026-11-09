@@ -1,8 +1,7 @@
 // A markdown table as Cursor's conversation lays it out (`chat.look:
 // cursor`, docs/fork.md): as wide as the conversation, its columns sharing
 // that by what is in them, their text wrapping, as an HTML table's
-// automatic layout does; scrolling sideways only where even their longest
-// words do not fit.
+// automatic layout does, words too long broken as Cursor's are.
 
 import 'dart:math' as math;
 
@@ -16,8 +15,8 @@ abstract final class CursorTable {
 
   /// The widths of the columns of a table [width] wide whose cells hold
   /// [cells] (rows of their text, the head's in [headStyle]), each with
-  /// [cellPadding] about it; null where their longest words alone are wider
-  /// (the table then scrolls at its columns' own widths).
+  /// [cellPadding] about it; null only where [width] is not known (the
+  /// table then scrolls at its columns' own widths).
   ///
   /// As a browser's automatic layout: each column's least width is its
   /// longest word's, its most its longest line's. Where all fit at their
@@ -51,9 +50,13 @@ abstract final class CursorTable {
     }
     final sumLeast = least.fold(0.0, (a, b) => a + b);
     final sumMost = most.fold(0.0, (a, b) => a + b);
-    if (sumLeast > width + 0.5) return null;
     if (sumMost <= width) {
       return [for (final m in most) m * width / sumMost];
+    }
+    // Its words alone wider still: as their share, words broken where they
+    // must be, as Cursor's are; the table never wider than the chat.
+    if (sumLeast >= width) {
+      return [for (final l in least) l * width / sumLeast];
     }
     final want = sumMost - sumLeast;
     final room = width - sumLeast;

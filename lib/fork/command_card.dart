@@ -54,6 +54,14 @@ class CursorCommandCard extends StatelessWidget {
 
   static const radius = 10.0;
 
+  /// Its colors, the theme's text's as Cursor's card has them: the title
+  /// at 60%, the programs, the icon and the output's last lines at 36%
+  /// (measured on its screenshots), what it printed, open, at 55%.
+  static Color get titleColor => AppColors.text.withValues(alpha: 0.6);
+  static Color get faint => AppColors.text.withValues(alpha: 0.36);
+  static TextStyle get printedStyle =>
+      stepMono.copyWith(color: AppColors.text.withValues(alpha: 0.55));
+
   bool get _running => status == CommandStatus.running && !background;
 
   /// The last [tailLines] lines [printed] has (not the blank ones at its
@@ -103,8 +111,11 @@ class CursorCommandCard extends StatelessWidget {
 
   Widget _header(BuildContext context, bool hovered) {
     final programs = shellPrograms(command);
-    final faint = AppColors.textFaint;
-    final titleStyle = TextStyle(color: AppColors.text, fontSize: 13);
+    final faint = CursorCommandCard.faint;
+    final titleStyle = TextStyle(
+      color: CursorCommandCard.titleColor,
+      fontSize: 13,
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
       child: Row(
@@ -175,7 +186,7 @@ class CursorCommandCard extends StatelessWidget {
       blendMode: BlendMode.dstIn,
       child: Text(
         lines.join('\n'),
-        style: stepMono.copyWith(color: AppColors.textFaint),
+        style: stepMono.copyWith(color: CursorCommandCard.faint),
         maxLines: tailLines,
         overflow: TextOverflow.clip,
         softWrap: false,
@@ -199,9 +210,9 @@ class CursorCommandCard extends StatelessWidget {
             if (printed.text.isNotEmpty) ...[
               const SizedBox(height: 8),
               if (printed.styled)
-                Text.rich(printed.span, style: stepMono)
+                Text.rich(printed.span, style: printedStyle)
               else
-                Text(printed.text, style: stepMono),
+                Text(printed.text, style: printedStyle),
             ],
           ],
         ),

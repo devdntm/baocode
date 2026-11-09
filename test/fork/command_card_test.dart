@@ -82,6 +82,12 @@ void main() {
     expect(tail, findsOneWidget);
     expect(find.textContaining('line 6'), findsOneWidget);
     expect(find.textContaining('line 5'), findsNothing);
+    // In the theme's text color, faint, as Cursor's.
+    expect(tester.widget<Text>(tail).style?.color, CursorCommandCard.faint);
+    expect(
+      tester.widget<Text>(find.text('cd, python3')).style?.color,
+      CursorCommandCard.faint,
+    );
     await tester.tap(tail);
     expect(toggled, 1);
   });

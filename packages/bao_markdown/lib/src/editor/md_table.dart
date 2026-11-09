@@ -1448,8 +1448,7 @@ class _MdTableState extends State<MdTable> implements MdTableEditing {
 
     // fork: the columns' widths in [maxWidth] (fitTables): each its longest
     // word's at least, its longest text's at most, as a browser's automatic
-    // layout shares a table's width; null where it is not to fit, or its
-    // words alone are wider.
+    // layout shares a table's width; null where it is not to fit.
     List<double>? fitted() {
       if (!style.fitTables || !maxWidth.isFinite) return null;
       final scaler = MediaQuery.textScalerOf(context);
@@ -1483,8 +1482,12 @@ class _MdTableState extends State<MdTable> implements MdTableEditing {
       final width = maxWidth - 2 * _side;
       final sumLeast = least.fold(0.0, (a, b) => a + b);
       final sumMost = most.fold(0.0, (a, b) => a + b);
-      if (sumLeast > width) return null;
       if (sumMost <= width) return [for (final m in most) m * width / sumMost];
+      // Its words alone wider still: as their share, words broken where
+      // they must be, as a browser's do; the table never wider than this.
+      if (sumLeast >= width) {
+        return [for (final l in least) l * width / sumLeast];
+      }
       final want = sumMost - sumLeast;
       return [
         for (var c = 0; c < columns; c++)

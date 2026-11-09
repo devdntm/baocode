@@ -39,18 +39,17 @@ void main() {
     expect(widths[1], greaterThan(widths[0]));
   });
 
-  test('words alone wider than the width: none, the table scrolls', () {
-    expect(
-      CursorTable.widths(
-        [
-          [List.filled(40, 'x').join(), List.filled(40, 'y').join()],
-        ],
-        style: _style,
-        headStyle: _style,
-        width: 200,
-      ),
-      isNull,
-    );
+  test('words alone wider than the width: as their share, broken', () {
+    final widths = CursorTable.widths(
+      [
+        [List.filled(40, 'x').join(), List.filled(20, 'y').join()],
+      ],
+      style: _style,
+      headStyle: _style,
+      width: 200,
+    )!;
+    expect(widths.reduce((a, b) => a + b), closeTo(200, 0.01));
+    expect(widths[0], greaterThan(widths[1]));
   });
 
   testWidgets('under Cursor\'s look a chat\'s table is as wide as the chat, '
