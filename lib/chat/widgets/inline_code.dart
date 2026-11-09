@@ -1,6 +1,8 @@
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
+// fork: chat.look, Cursor's inline code (docs/fork.md).
+import '../../fork/cursor_look.dart';
 import '../../theme/app_theme.dart';
 import '../chat_find.dart' show ChatFindMarks;
 
@@ -33,7 +35,11 @@ class InlineCodeText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _InlineCodeBackdrop(
-    color: AppColors.inlineCodeBackground,
+    // fork: chat.look, Cursor's pill: the text's color, faint.
+    color: ChatLook.isCursor
+        ? CursorType.inlineCodeBackground
+        : AppColors.inlineCodeBackground,
+    cursor: ChatLook.isCursor,
     child: ChatFindMarks(
       child: Text.rich(
         span,
@@ -45,19 +51,28 @@ class InlineCodeText extends StatelessWidget {
 }
 
 class _InlineCodeBackdrop extends SingleChildRenderObjectWidget {
-  const _InlineCodeBackdrop({required this.color, required super.child});
+  const _InlineCodeBackdrop({
+    required this.color,
+    this.cursor = false,
+    required super.child,
+  });
 
   final Color color;
 
+  /// fork: chat.look, [RenderInlineCodeBackdrop.cursor].
+  final bool cursor;
+
   @override
   RenderInlineCodeBackdrop createRenderObject(BuildContext context) =>
-      RenderInlineCodeBackdrop(color);
+      RenderInlineCodeBackdrop(color)..cursor = cursor;
 
   @override
   void updateRenderObject(
     BuildContext context,
     RenderInlineCodeBackdrop renderObject,
-  ) => renderObject.color = color;
+  ) => renderObject
+    ..color = color
+    ..cursor = cursor;
 }
 
 /// Paints, under its child, the background of each [InlineCodeSpan] of
@@ -66,6 +81,16 @@ class RenderInlineCodeBackdrop extends RenderProxyBox {
   RenderInlineCodeBackdrop(this._color);
 
   static const radius = Radius.circular(3);
+
+  /// fork: chat.look. Cursor's pill: one per line a code is on (its
+  /// narrow padding is a smaller font, a box of its own), rounder.
+  bool get cursor => _cursor;
+  bool _cursor = false;
+  set cursor(bool value) {
+    if (value == _cursor) return;
+    _cursor = value;
+    markNeedsPaint();
+  }
 
   Color get color => _color;
   Color _color;
@@ -142,11 +167,18 @@ class RenderInlineCodeBackdrop extends RenderProxyBox {
           bool onCodeLine(Rect rect) => lines.any(
             (line) => line.top < rect.bottom && rect.top < line.bottom,
           );
-          for (final box in paragraph.getBoxesForSelection(range)) {
-            if (!onCodeLine(box.toRect())) continue;
-            final rect = MatrixUtils.transformRect(transform, box.toRect());
+          final boxes = [
+            for (final box in paragraph.getBoxesForSelection(range))
+              if (onCodeLine(box.toRect())) box.toRect(),
+          ];
+          // fork: chat.look, a pill a line.
+          for (final box in _cursor ? _perLine(boxes) : boxes) {
+            final rect = MatrixUtils.transformRect(transform, box);
             context.canvas.drawRRect(
-              RRect.fromRectAndRadius(rect.shift(offset), radius),
+              RRect.fromRectAndRadius(
+                rect.shift(offset),
+                _cursor ? CursorType.inlineCodeRadius : radius,
+              ),
               paint,
             );
           }
@@ -154,5 +186,21 @@ class RenderInlineCodeBackdrop extends RenderProxyBox {
       }
     }
     super.paint(context, offset);
+  }
+
+  /// fork: chat.look. [boxes] joined where they share a line.
+  static List<Rect> _perLine(List<Rect> boxes) {
+    final lines = <Rect>[];
+    for (final box in boxes) {
+      final i = lines.indexWhere(
+        (line) => line.top < box.bottom && box.top < line.bottom,
+      );
+      if (i < 0) {
+        lines.add(box);
+      } else {
+        lines[i] = lines[i].expandToInclude(box);
+      }
+    }
+    return lines;
   }
 }

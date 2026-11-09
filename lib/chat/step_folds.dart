@@ -1,3 +1,4 @@
+import '../fork/cursor_look.dart'; // fork: chat.look (docs/fork.md).
 import 'chat_models.dart';
 
 /// What a fold holds.
@@ -284,7 +285,8 @@ bool isQuickStep(ChatItem item) => switch (item) {
           ToolKind.image => false,
           _ => true,
         },
-  TerminalItem(:final background) => !background,
+  // fork: chat.look, each command a card of its own, as Cursor's.
+  TerminalItem(:final background) => !background && !ChatLook.isCursor,
   _ => false,
 };
 

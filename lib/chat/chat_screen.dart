@@ -59,6 +59,9 @@ import 'widgets/context_meter.dart';
 import 'widgets/inline_rename_field.dart';
 import 'widgets/pixel_loader.dart';
 import 'widgets/plan_start.dart';
+// fork: chat.look (docs/fork.md).
+import '../fork/cursor_look.dart';
+import '../fork/run_command_panel.dart';
 
 /// Layout, top to bottom:
 /// - history + live turn: a virtual list that yields height;
@@ -1278,7 +1281,17 @@ class _ChatScreenState extends State<ChatScreen>
 
   /// Whether the context's meter is in the row under the card (or on it,
   /// [_footOnCard]), not in the composer.
-  bool get _meterInFoot => _footer > 0 || _footOnCard;
+  bool get _meterInFoot => _footer > 0 || _footOnCard || _footUnder;
+
+  /// fork: chat.look. Whether, in the IDE, the row under the input is the
+  /// chat window's: [ChatScreen.below] and the labelled meter, as Cursor's
+  /// IDE chat has them, not the branch alone and a ring in the input.
+  bool get _footUnder =>
+      ChatLook.isCursor &&
+      widget.embedded &&
+      !_footOnCard &&
+      _footer == 0 &&
+      !IslandFootHosted.of(context);
 
   /// Whether the row under the card is on it, under the composer (see
   /// [ChatScreen.footOnCard]): not where what is around it shows it.
@@ -1434,6 +1447,16 @@ class _ChatScreenState extends State<ChatScreen>
               ResetCreditsHint(model: _session.models?.selected.id),
               _PanelSlot(
                 child: switch (_session.pendingInteraction) {
+                  // fork: chat.look, auto mode's refusal as Cursor's "Run
+                  // command" (the approve-blocked mod's question).
+                  final request?
+                      when ChatLook.isCursor &&
+                          BlockedCommandAsk.of(request) != null =>
+                    RunCommandPanel(
+                      key: ObjectKey(request),
+                      ask: BlockedCommandAsk.of(request)!,
+                      onAnswer: _answer,
+                    ),
                   final request? => InteractionPanel(
                     key: ObjectKey(request),
                     request: request,
@@ -1609,6 +1632,9 @@ class _ChatScreenState extends State<ChatScreen>
         // on it, here, in the row under the card's.
         if (_footOnCard)
           SizedBox(height: Islands.belowHeight, child: _buildFoot())
+        // fork: chat.look, the branch and the context's size, as in a chat.
+        else if (_footUnder)
+          _buildFoot()
         else if (_footer == 0 && !IslandFootHosted.of(context))
           ?widget.below,
       ],

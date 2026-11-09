@@ -8,6 +8,8 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../../../keybindings/keybinding_service.dart';
+// fork: the project's plans (docs/fork.md).
+import '../../../plan/plan_explorer_pane.dart';
 import '../../../l10n/l10n.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/codicons.dart';
@@ -218,6 +220,13 @@ class ExplorerViewPart extends StatelessWidget {
                                       ),
                             ),
                     ),
+                  // fork: the project's plans (lib/plan/, docs/fork.md).
+                  ...PlanExplorerPane.of(
+                    context,
+                    services,
+                    root: local ? workspace.root : null,
+                    active: activePath,
+                  ),
                   IdePane(
                     id: 'outline',
                     title: context.l10n.wbOutline,

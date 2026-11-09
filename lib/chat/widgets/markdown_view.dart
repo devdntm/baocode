@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:path/path.dart' as p;
 
+// fork: chat.look, Cursor's type (docs/fork.md).
+import '../../fork/cursor_look.dart';
 import '../../ide/ide_hover.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
@@ -37,12 +39,16 @@ class MarkdownView extends StatefulWidget {
   /// [baseStyle] when null.
   final TextStyle? style;
 
-  static TextStyle get baseStyle =>
-      TextStyle(color: AppColors.text, fontSize: 13.5, height: 1.6);
+  static TextStyle get baseStyle => ChatLook.isCursor
+      // fork: chat.look, Cursor's text.
+      ? CursorType.text
+      : TextStyle(color: AppColors.text, fontSize: 13.5, height: 1.6);
 
   /// Inline code's, its background painted by [InlineCodeText].
-  static TextStyle get codeStyle =>
-      AppFonts.uiCodeStyle(12.5).copyWith(color: AppColors.inlineCode);
+  static TextStyle get codeStyle => ChatLook.isCursor
+      // fork: chat.look, Cursor's inline code.
+      ? CursorType.inlineCode
+      : AppFonts.uiCodeStyle(12.5).copyWith(color: AppColors.inlineCode);
 
   /// The block syntaxes of its own, before GFM's: code citations and TeX.
   static const blockSyntaxes = <md.BlockSyntax>[
@@ -140,7 +146,8 @@ class _MarkdownViewState extends State<MarkdownView> {
             : _Segment(text, _parse(text, keep: old.isEmpty)),
     ];
     _gallery.clear();
-    final options = MarkdownOptions();
+    // fork: chat.look, Cursor's spacing.
+    final options = MarkdownOptions.chat();
     final children = <Widget>[];
     for (final (i, segment) in _segments.indexed) {
       final first = segment.nodes.where(_shows).firstOrNull;
@@ -204,7 +211,12 @@ class _MarkdownViewState extends State<MarkdownView> {
     // inline code naming one once it is known to be there.
     final files = FileOpenScope.maybeOf(context);
     if (files == null) {
-      return MarkdownBlocks(nodes: nodes, style: style ?? baseStyle);
+      return MarkdownBlocks(
+        nodes: nodes,
+        style: style ?? baseStyle,
+        // fork: chat.look, Cursor's spacing.
+        options: MarkdownOptions.chat(),
+      );
     }
     Widget? icon(FileLink? link) {
       final path = link == null ? null : files.resolve(link.path);
@@ -215,7 +227,13 @@ class _MarkdownViewState extends State<MarkdownView> {
     }
 
     final gallery = _gallery;
+    // fork: chat.look, Cursor's spacing and headings ([MarkdownOptions.chat]).
+    final look = MarkdownOptions.chat();
     final options = MarkdownOptions(
+      headingSizes: look.headingSizes,
+      gap: look.gap,
+      headingGap: look.headingGap,
+      cursorLook: look.cursorLook,
       link: (href) =>
           _linkRecognizer(href) ?? files.linkRecognizer(href, context: context),
       code: (code) => files.codeRecognizer(code, context: context),
@@ -447,11 +465,20 @@ bool _shows(md.Node node) => switch (node) {
   _ => false,
 };
 
-/// The space before [node] after another block.
-double _gapBefore(md.Node node, MarkdownOptions options) => switch (node) {
-  md.Element(tag: 'h1' || 'h2' || 'h3') => options.headingGap,
-  _ => options.gap,
-};
+/// The space before [node] after another block ([previous], when known).
+double _gapBefore(md.Node node, MarkdownOptions options, [md.Node? previous]) =>
+    switch (node) {
+      md.Element(tag: 'h1' || 'h2' || 'h3') => options.headingGap,
+      // fork: chat.look, Cursor's 16 before any heading, 4 after one.
+      _ when options.cursorLook && _isHeading(node) => options.headingGap,
+      _ when options.cursorLook && _isHeading(previous) =>
+        CursorType.headingGapAfter,
+      _ => options.gap,
+    };
+
+/// fork: chat.look. Whether [node] is a heading.
+bool _isHeading(md.Node? node) =>
+    node is md.Element && RegExp(r'^h[1-6]$').hasMatch(node.tag);
 
 /// The `src` of each image in [nodes], in the order they come.
 List<String> _imageSources(List<md.Node> nodes) {
@@ -502,7 +529,23 @@ class MarkdownOptions {
     this.fileTag,
     this.image,
     this.onToggleTask,
+    this.cursorLook = false,
   });
+
+  /// fork: chat.look. A conversation's: Cursor's spacing and headings when
+  /// the conversations look as Cursor's, as before otherwise.
+  factory MarkdownOptions.chat() => ChatLook.isCursor
+      ? const MarkdownOptions(
+          headingSizes: CursorType.headingSizes,
+          gap: CursorType.gap,
+          headingGap: CursorType.headingGapBefore,
+          cursorLook: true,
+        )
+      : const MarkdownOptions();
+
+  /// fork: chat.look. Whether blocks are drawn as Cursor's: its headings'
+  /// weight and lines, bold, lists and inline code.
+  final bool cursorLook;
 
   /// `h1` to `h6`'s font sizes.
   final List<double> headingSizes;
@@ -578,11 +621,15 @@ class MarkdownBlocks extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final children = <Widget>[];
+    md.Node? previous;
     for (final node in nodes) {
       final block = _block(node, style, options);
       if (block == null) continue;
-      if (children.isNotEmpty) children.add(SizedBox(height: _gap(node)));
+      if (children.isNotEmpty) {
+        children.add(SizedBox(height: _gap(node, previous)));
+      }
       children.add(block);
+      previous = node;
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -591,7 +638,8 @@ class MarkdownBlocks extends StatelessWidget {
     );
   }
 
-  double _gap(md.Node node) => _gapBefore(node, options);
+  double _gap(md.Node node, md.Node? previous) =>
+      _gapBefore(node, options, previous);
 }
 
 Widget? _block(md.Node node, TextStyle style, MarkdownOptions options) {
@@ -610,7 +658,8 @@ Widget? _block(md.Node node, TextStyle style, MarkdownOptions options) {
     case 'h1' || 'h2' || 'h3' || 'h4' || 'h5' || 'h6':
       final level = int.parse(node.tag.substring(1));
       final heading = Padding(
-        padding: const EdgeInsets.only(top: 2),
+        // fork: chat.look, Cursor's heading has no space of its own.
+        padding: EdgeInsets.only(top: options.cursorLook ? 0 : 2),
         child: InlineCodeText(
           _inlines(
             node.children ?? const [],
@@ -618,7 +667,7 @@ Widget? _block(md.Node node, TextStyle style, MarkdownOptions options) {
               color: AppColors.textPrimary,
               fontSize: options.headingSizes[level - 1],
               fontWeight: FontWeight.w600,
-              height: 1.4,
+              height: options.cursorLook ? CursorType.headingHeight : 1.4,
             ),
             options,
           ),
@@ -714,10 +763,20 @@ class _List extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: _isTask(item) ? 22 : (ordered ? 24 : 18),
-                  child: _marker(item, ordered ? '${start + i}.' : '•'),
-                ),
+                // fork: chat.look, Cursor's indent, the marker in it.
+                if (options.cursorLook && !_isTask(item))
+                  SizedBox(
+                    width: CursorType.listIndent,
+                    child: Align(
+                      alignment: const Alignment(0.2, -1),
+                      child: _marker(item, ordered ? '${start + i}.' : '•'),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    width: _isTask(item) ? 22 : (ordered ? 24 : 18),
+                    child: _marker(item, ordered ? '${start + i}.' : '•'),
+                  ),
                 Expanded(child: _itemBody(item)),
               ],
             ),
@@ -981,10 +1040,13 @@ InlineSpan _inline(md.Node node, MarkdownOptions options) {
   }
   return switch (node.tag) {
     'strong' || 'b' => TextSpan(
-      style: TextStyle(
-        fontWeight: FontWeight.w600,
-        color: AppColors.textPrimary,
-      ),
+      // fork: chat.look, Cursor's bold: medium, in the text's color.
+      style: options.cursorLook
+          ? CursorType.strong
+          : TextStyle(
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
       children: inner(),
     ),
     'em' || 'i' => TextSpan(
@@ -1014,6 +1076,15 @@ InlineSpan _inline(md.Node node, MarkdownOptions options) {
             recognizer: recognizer,
             mouseCursor: SystemMouseCursors.click,
           ),
+        ],
+      ),
+      // fork: chat.look, Cursor's 0.3 em either side, not a space.
+      null when options.cursorLook => InlineCodeSpan(
+        style: MarkdownView.codeStyle,
+        children: [
+          TextSpan(text: ' ', style: CursorType.inlineCodePad),
+          TextSpan(text: _unescape(node.textContent)),
+          TextSpan(text: ' ', style: CursorType.inlineCodePad),
         ],
       ),
       null => InlineCodeSpan(

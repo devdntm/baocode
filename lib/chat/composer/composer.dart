@@ -8,6 +8,8 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:bao_markdown/bao_markdown.dart';
 
+// fork: chat.look (docs/fork.md).
+import '../../fork/cursor_look.dart';
 import '../../kernel/agent_kernel.dart';
 import '../../kernel/kernel_types.dart';
 import '../../keybindings/chat_keybindings.dart';
@@ -148,7 +150,9 @@ class ChatComposerState extends State<ChatComposer>
 
   /// Resting height of the text area: roomier than one line, and it keeps
   /// the composer at the height it had with the old context row.
-  static const _minEditorHeight = _lineHeight + 28;
+  static double get _minEditorHeight =>
+      // fork: chat.look, Cursor's: a line lower, the text on the toolbar.
+      _lineHeight + (ChatLook.isCursor ? 8 : 28);
   static const _maxEditorLines = 10;
 
   late final ComposerController _controller = _createController();

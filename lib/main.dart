@@ -22,6 +22,9 @@ import 'chat/composer/composer_files.dart' show ComposerFile, pastedAsPicture;
 import 'chat/chat_width.dart';
 import 'chat/reply_scroll.dart';
 import 'chat/edit_detail.dart';
+// fork: chat.look (docs/fork.md).
+import 'fork/cursor_look.dart';
+import 'fork/scroll_momentum.dart';
 import 'chat/user_message_style.dart';
 import 'chat/widgets/chat_minimap.dart';
 import 'chat/widgets/pixel_loader.dart';
@@ -581,6 +584,13 @@ void followSettingsFiles(SettingsFiles files) {
     files.settings,
     () => files.settings[EditDetail.settingKey],
   );
+  // fork: chat.look, Cursor's look of the conversation (docs/fork.md).
+  ChatLook.follow(files.settings, () => files.settings[ChatLook.settingKey]);
+  // fork: workbench.scroll.momentum, a trackpad as macOS scrolls it.
+  ScrollMomentum.follow(
+    files.settings,
+    () => files.settings[ScrollMomentum.settingKey],
+  );
   // Settings → Appearance: where a conversation stays as a reply comes.
   ReplyScroll.keep(
     files.settings,
@@ -1047,7 +1057,12 @@ class _BaoCodeAppState extends State<BaoCodeApp>
             zoom == 1 ? system : TextScaler.linear(system.scale(1) / zoom),
           ),
           child: MediaQuery(
-            data: media.copyWith(textScaler: snapped(system)),
+            data: media.copyWith(
+              textScaler: snapped(system),
+              // fork: workbench.scroll.momentum, lists follow the fingers
+              // from their first pixel.
+              gestureSettings: ScrollMomentum.gestureSettings,
+            ),
             child: UiZoom(scale: zoom, child: scaled),
           ),
         );

@@ -5,6 +5,8 @@ import '../platform/app_platform.dart';
 import 'code_font.dart';
 import 'window_blur.dart';
 import 'workbench_theme.dart' hide ColorScheme;
+// fork: chat.look (docs/fork.md).
+import '../fork/cursor_look.dart';
 
 /// The app's colors, from the workbench's color theme: each is a VS Code
 /// color id's (see [WorkbenchThemeService]), so they follow the theme the
@@ -274,6 +276,8 @@ abstract final class AppFonts {
     fontFamilyFallback: monoFallbacks,
     fontFeatures: CodeFont.features,
     fontSize: CodeFont.sized(size),
+    // fork: chat.look, code untracked, as Cursor's.
+    letterSpacing: ChatLook.isCursor ? 0 : null,
   );
 
   /// [codeStyle] for code among the window's own text (the chat's code
@@ -284,6 +288,8 @@ abstract final class AppFonts {
     fontFamilyFallback: monoFallbacks,
     fontFeatures: CodeFont.features,
     fontSize: CodeFont.uiSized(size),
+    // fork: chat.look, code untracked, as Cursor's.
+    letterSpacing: ChatLook.isCursor ? 0 : null,
   );
 
   /// What Windows falls back on. Set once, for all text, by the theme there
@@ -325,7 +331,7 @@ abstract final class AppFonts {
 ThemeData buildAppTheme() {
   final colors = WorkbenchThemeService.instance.colors;
   final brightness = colors.dark ? Brightness.dark : Brightness.light;
-  return ThemeData(
+  final theme = ThemeData(
     brightness: brightness,
     fontFamilyFallback: AppPlatform.isWindows
         ? AppFonts.windowsFallbacks
@@ -355,6 +361,8 @@ ThemeData buildAppTheme() {
       minThumbLength: 48,
     ),
   );
+  // fork: chat.look, text tracked as macOS's, not Material 3's 0.25 px.
+  return ChatLook.isCursor ? CursorType.theme(theme) : theme;
 }
 
 /// [selection] at most [maxAlpha] opaque, so text under it keeps its color

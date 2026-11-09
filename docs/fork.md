@@ -28,7 +28,9 @@ cd - && git worktree remove --force ../baocode-merge-check
 ## Правила кода
 
 - **Новый код — в новых файлах**, по фичам:
-  - `lib/fork/` — общее для форка (строки);
+  - `lib/fork/` — общее для форка: строки, вид Cursor (`chat.look`), прокрутка
+    трекпада (`workbench.scroll.momentum`);
+  - `packages/fork_scroll_momentum/` — плагин macOS: инерция трекпада от системы;
   - `lib/ide/cursor_layout/` — раскладка Cursor;
   - `lib/plan/` — вид плана и его задачи;
   - `lib/integrations/claude_context/` — индекс claude-context;
@@ -98,7 +100,19 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/kernel/claude_code/claude_code_translator.dart` | `PlanWritten` и при повторном чтении истории (`replayed: replaying`) |
 | `lib/ide/markdown/markdown_preview.dart` | `PlanPreview.footer` (задачи плана под текстом) и `PlanPreview.frontMatter` (у плана — только `overview`) |
 | `packages/bao_markdown/lib/src/editor/md_editor.dart` | параметр `footer`: виджет после строк в той же прокрутке |
-| `pubspec.yaml` | зависимость `yaml` (front matter плана); ассеты `tool/claude_context/bao_index.js` и `tool/cursor_import/cursor_memsearch_import.py` |
+| `pubspec.yaml` | зависимости `yaml` (front matter плана) и `fork_scroll_momentum` (инерция трекпада); ассеты `tool/claude_context/bao_index.js` и `tool/cursor_import/cursor_memsearch_import.py` |
+| `lib/main.dart` | `ChatLook.follow` (`chat.look`), `ScrollMomentum.follow` (`workbench.scroll.momentum`), `gestureSettings` окна (порог трекпада) |
+| `lib/theme/app_theme.dart` | `buildAppTheme`: при `chat.look: cursor` текст темы с трекингом macOS (`CursorType.theme`); `codeStyle`/`uiCodeStyle` без межбуквенного интервала |
+| `lib/chat/widgets/markdown_view.dart` | `baseStyle`/`codeStyle` Cursor; `MarkdownOptions.chat()` и `cursorLook`: отступы блоков, заголовки, жирный, списки, отступы вокруг встроенного кода |
+| `lib/chat/widgets/inline_code.dart` | плашка встроенного кода Cursor: цвет, радиус, одна на строку |
+| `lib/chat/composer/composer.dart` | `_minEditorHeight`: на строку ниже при `chat.look: cursor` |
+| `lib/chat/chat_screen.dart` | `_footUnder`: в IDE ветка и размер контекста под полем ввода; `RunCommandPanel` вместо `InteractionPanel` для вопроса approve-blocked |
+| `lib/chat/widgets/command_step.dart` | `CursorCommandCard` при `chat.look: cursor` |
+| `lib/chat/widgets/shell_highlight.dart` | `shellPrograms`: программы команды для заголовка карточки |
+| `lib/chat/step_folds.dart` | `isQuickStep`: команды не сворачиваются в «Ran N commands» при `chat.look: cursor` |
+| `lib/ide/workbench/parts/explorer_view.dart` | `PlanExplorerPane`: раздел Plans в Explorer |
+| `lib/ide/services/explorer.dart` | раздел Plans открыт с начала при `chat.look: cursor` |
+| `lib/base/smooth_scroll.dart` | `velocityTrackerBuilder`: трекпад не докручивает сам, когда инерцию даёт система |
 
 Колонка редактора с панелью в
 [`lib/ide/cursor_layout/cursor_grid.dart`](../lib/ide/cursor_layout/cursor_grid.dart)
@@ -254,9 +268,73 @@ tool/dev_app/build_dev_app.sh --skip-build # поставить то, что у�
 - **Темы.** Темы Cursor из `/Applications/Cursor.app/…/extensions/theme-cursor` упаковываются в `.vsix` (`ditto`) и ставятся как расширение.
 - **Клавиши.** Кнопка открывает существующий импорт клавиш из настроек (`AppSettings.showImport`, он знает Cursor).
 
-## Мод `/plan-pane`
+## Вид Cursor: `chat.look`
 
-С видом плана мод `plan-pane` не нужен: он выводит задачи текстом в чат. Это плагин `plan-pane@arseniy-local` из
-`~/.claude/local-marketplace`. Отключить его: `/plugin` → `plan-pane` → Disable,
-или поставить `false` у `"plan-pane@arseniy-local"` в `enabledPlugins` файла
-`~/.claude/settings.json`.
+`"chat.look": "cursor"` (в Dev включено, по умолчанию `baocode`) —
+[`lib/fork/cursor_look.dart`](../lib/fork/cursor_look.dart). Значения взяты из
+CSS самого Cursor (`/Applications/Cursor.app/.../workbench.*.css`, `.rendered-markdown`)
+и сверены по скриншотам.
+
+- **Шрифт.** Семейства те же, что у Cursor: SF Pro и Menlo. Разница была в
+  интервале: Material 3 даёт тексту внутри `Material`/`Scaffold` `letterSpacing: 0.25`,
+  и буквы BaoCode стояли реже. При `chat.look: cursor` тема тянет текст, как это
+  делает сама macOS (`CursorType.tracking`, −0,003 em), код идёт без интервала.
+  Тема собирается при запуске: после смены настройки нужен перезапуск.
+- **Чат:** 14/22,4; абзацы через 10, заголовки 17/17/14/13 с 16 до и 4 после;
+  жирный — medium в цвете текста; встроенный код — Menlo 12 на плашке цвета
+  текста (8%), отступ 0,3 em, радиус 4; списки с отступом 28.
+- **Поле ввода** на строку ниже: текст сразу над кнопками.
+- **IDE:** под полем ввода ветка и «146K / 1M», как в режиме чата; в Explorer
+  раздел Plans ([`plan_explorer_pane.dart`](../lib/plan/plan_explorer_pane.dart)),
+  открытый с начала; клик открывает план в редакторе.
+- **Команды** ([`command_card.dart`](../lib/fork/command_card.dart)): карточка
+  «›_ описание  cd, python3»; пока ничего не выведено — одна строка; когда вывод
+  есть — его последние 4 строки, бледнее кверху; по клику — команда и весь вывод.
+  Каждая команда отдельно, не в «Ran N commands».
+- **Отказ auto mode** ([`run_command_panel.dart`](../lib/fork/run_command_panel.dart)):
+  вопрос мода approve-blocked (заголовок `Auto mode`, варианты `Разрешить`,
+  `Отклонить`, `Allowlist '<программа>'`) рисуется карточкой «Run command: npm»:
+  команда, слева «Ask Every Time ⌄» / «Allowlist 'npm'», справа Skip и Run ⏎
+  (Enter, Esc). Ответ — вариант самого мода, логика (`Bash(npm:*)` в
+  `permissions.allow`) у него же, так что в терминале это обычный вопрос.
+
+## Прокрутка трекпада: `workbench.scroll.momentum`
+
+`"workbench.scroll.momentum": "system"` (в Dev включено, по умолчанию `flutter`) —
+[`lib/fork/scroll_momentum.dart`](../lib/fork/scroll_momentum.dart) и плагин
+[`packages/fork_scroll_momentum`](../packages/fork_scroll_momentum).
+
+- **Инерция.** Встраиватель Flutter для macOS выбрасывает события инерции системы
+  (`dispatchGestureEvent` в `FlutterViewController.mm`) и докручивает сам по своей
+  физике. Плагин ставит локальный монитор `scrollWheel` и шлёт в Dart каждое событие
+  инерции с точкой под курсором (view Flutter, её точки) и дельтами; Dart продолжает
+  ими жест трекпада (`PointerPanZoom*` своего устройства), как пальцами, 1:1. Своя
+  докрутка Flutter для трекпада выключена (`NoFlingVelocityTracker` в
+  `BaoScrollBehavior.velocityTrackerBuilder`; редактор берёт его же).
+- **Порог.** Списки брали жест трекпада после 18 px (`kTouchSlop`), и начало
+  свайпа терялось; теперь 3 px (`MediaQuery.gestureSettings`). Жест инерции
+  начинается шагом чуть за порог: Flutter выбрасывает то, что сдвинулось до
+  принятия жеста.
+- Колесо мыши не тронуто.
+
+## Окружение Claude Code: claude-setup
+
+Всё, что BaoCode Dev ждёт от Claude Code на машине, лежит в отдельном приватном
+репозитории `devdntm/claude-setup` (локально `~/Downloads/claude-setup`):
+
+- маркетплейс `arseniy-local` с плагинами `approve-blocked` и `cursor-plan`;
+- глобальный `~/.claude/CLAUDE.md` и `~/.claude/scripts`;
+- фрагменты `~/.claude/settings.json` и `~/.claude.json` (сервер `claude-context`);
+- `docker-compose.yml` Milvus, `package.json` сервера claude-context, конфиг memsearch.
+
+`~/.claude/local-marketplace`, `~/.claude/CLAUDE.md` и `~/.claude/scripts` — ссылки
+в этот репозиторий, так что правки плагинов и правил сразу видны в его git. На
+новой машине:
+
+```sh
+git clone git@github.com:devdntm/claude-setup.git ~/Downloads/claude-setup
+~/Downloads/claude-setup/install.sh --baocode   # --check: только показать, чего нет
+```
+
+Мод `plan-pane` (задачи плана текстом в чате) с видом плана не нужен: он
+выключен и из маркетплейса убран, в истории `claude-setup` он остался.

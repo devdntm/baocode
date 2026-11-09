@@ -56,6 +56,9 @@ dependencies:
     path: packages/bao_sampler
   bao_xterm:
     path: packages/bao_xterm
+  # fork: the trackpad's momentum from macOS (docs/fork.md).
+  fork_scroll_momentum:
+    path: packages/fork_scroll_momentum
   # The names project icons are kept under (lib/icons/icon_library.dart).
   bonsoir: ^7.1.5
   clock: ^1.1.2

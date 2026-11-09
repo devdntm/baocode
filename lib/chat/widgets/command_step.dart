@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+// fork: chat.look, Cursor's command card (docs/fork.md).
+import '../../fork/command_card.dart';
+import '../../fork/cursor_look.dart';
 import '../../l10n/l10n.dart';
 import '../../sidebar/sidebar_menu.dart';
 import '../../theme/app_theme.dart';
@@ -67,6 +70,24 @@ class CommandStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // fork: chat.look, as Cursor's card.
+    if (ChatLook.isCursor) {
+      return CursorCommandCard(
+        title: title(command, description),
+        command: command,
+        output: output,
+        status: status,
+        background: background,
+        backgroundLabel: background ? context.l10n.commandInBackground : null,
+        expanded: expanded,
+        onToggle: _opens ? onToggle : null,
+        menu: _CommandMenu(
+          command: command,
+          output: output,
+          onMoveToBackground: onMoveToBackground,
+        ),
+      );
+    }
     // Rendered once opened: most steps stay closed.
     final printed = expanded ? terminalOutput(output) : null;
     return Column(

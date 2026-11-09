@@ -16,6 +16,9 @@ import '../ide_quick_open.dart';
 import '../ide_workspace.dart';
 import '../workbench/contributions.dart';
 import '../workbench/views.dart';
+// fork: the project's plans (docs/fork.md).
+import '../../fork/cursor_look.dart';
+import '../../plan/plan_explorer_pane.dart';
 
 class ExplorerService extends ChangeNotifier {
   ExplorerService({required this.host, required this._settings});
@@ -34,7 +37,11 @@ class ExplorerService extends ChangeNotifier {
 
   /// The open panes (Folders first, then Outline and Timeline, collapsed as
   /// VS Code starts them).
-  final Set<String> panes = {'folder'};
+  final Set<String> panes = {
+    'folder',
+    // fork: the project's plans open too, as in Cursor (docs/fork.md).
+    if (ChatLook.isCursor) PlanExplorerPane.id,
+  };
 
   /// What the Timeline pane follows.
   final timeline = IdeTimelineController();

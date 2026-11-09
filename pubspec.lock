@@ -245,6 +245,13 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  fork_scroll_momentum:
+    dependency: "direct main"
+    description:
+      path: "packages/fork_scroll_momentum"
+      relative: true
+    source: path
+    version: "0.1.0"
   glob:
     dependency: transitive
     description:

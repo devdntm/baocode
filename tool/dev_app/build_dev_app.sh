@@ -34,7 +34,7 @@ data="$support/baocode-dev"
 # update would replace the fork with upstream's release. The others only
 # where the user has not set them in Dev, as each feature lands.
 forced_settings='{"update.mode": "none"}'
-default_settings='{"workbench.ide.layout": "cursor"}'
+default_settings='{"workbench.ide.layout": "cursor", "chat.look": "cursor", "workbench.scroll.momentum": "system"}'
 
 skip_build=false
 for arg in "$@"; do

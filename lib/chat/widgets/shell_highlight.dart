@@ -115,3 +115,33 @@ List<(String, _ShellToken)> _shellTokens(String command) {
   }
   return tokens;
 }
+
+/// fork: chat.look (docs/fork.md). The programs [command] runs, each once,
+/// in order (`cd, python3`), as Cursor names them by a command's card: a
+/// heredoc's lines are its text, not commands.
+List<String> shellPrograms(String command) {
+  final lines = command.split('\n');
+  final kept = <String>[];
+  String? until;
+  for (final line in lines) {
+    if (until != null) {
+      if (line.trim() == until) until = null;
+      continue;
+    }
+    kept.add(line);
+    final heredoc = RegExp(
+      r'''<<-?\s*(?:'([^']+)'|"([^"]+)"|\\?([A-Za-z_][A-Za-z0-9_]*))''',
+    ).firstMatch(line);
+    if (heredoc != null) {
+      until = heredoc.group(1) ?? heredoc.group(2) ?? heredoc.group(3);
+    }
+  }
+  final programs = <String>[];
+  for (final (text, token) in _shellTokens(kept.join('\n'))) {
+    if (token != _ShellToken.program) continue;
+    for (final word in text.split(RegExp(r'\s+'))) {
+      if (word.isNotEmpty && !programs.contains(word)) programs.add(word);
+    }
+  }
+  return programs;
+}

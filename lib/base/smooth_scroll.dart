@@ -5,6 +5,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
+// fork: workbench.scroll.momentum (docs/fork.md).
+import 'package:fork_scroll_momentum/fork_scroll_momentum.dart';
 
 /// The app's scrolling: Material's, but on macOS with no bounce at the
 /// ends ([EdgeStopScrollPhysics]). The editors, which keep their own
@@ -20,6 +22,17 @@ class BaoScrollBehavior extends MaterialScrollBehavior {
         ),
         _ => super.getScrollPhysics(context),
       };
+
+  // fork: workbench.scroll.momentum. A trackpad's lifted fingers fling
+  // nothing where the system's momentum goes on for them (docs/fork.md).
+  @override
+  GestureVelocityTrackerBuilder velocityTrackerBuilder(BuildContext context) {
+    final builder = super.velocityTrackerBuilder(context);
+    return (event) =>
+        SystemMomentum.flingsOff && event.kind == PointerDeviceKind.trackpad
+        ? NoFlingVelocityTracker()
+        : builder(event);
+  }
 }
 
 /// macOS's scrolling (a trackpad's fling slowing as it does there,

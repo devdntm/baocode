@@ -224,11 +224,15 @@ class ProjectPlansList extends StatefulWidget {
     required this.root,
     required this.current,
     required this.onOpen,
+    this.header = true,
   });
 
   final String root;
   final String? current;
   final ValueChanged<String> onOpen;
+
+  /// Whether "Plans" is over them: not where a pane titles them.
+  final bool header;
 
   /// How often they are looked for again.
   static Duration refreshEvery = const Duration(seconds: 5);
@@ -276,17 +280,18 @@ class _ProjectPlansListState extends State<ProjectPlansList> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-          child: Text(
-            fork.planPlans,
-            style: TextStyle(
-              color: AppColors.textFaint,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w500,
+        if (widget.header)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+            child: Text(
+              fork.planPlans,
+              style: TextStyle(
+                color: AppColors.textFaint,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
-        ),
         Expanded(
           child: plans == null
               ? const SizedBox.shrink()

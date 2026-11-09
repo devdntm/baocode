@@ -44,6 +44,7 @@ import 'package:baocode/chat/panels/context_usage_panel.dart';
 import 'package:baocode/keybindings/keybinding_service.dart';
 import 'package:baocode/platform/native_md_clipboard.dart';
 import 'package:baocode/theme/app_theme.dart';
+import 'package:baocode/fork/cursor_look.dart';
 
 Future<ChatSession> pumpScreen(
   WidgetTester tester, {
@@ -1199,6 +1200,24 @@ void main() {
     );
     await settleAnimations(tester);
     expect(find.byType(SuggestionMenu), findsNothing);
+  });
+
+  // fork: chat.look (docs/fork.md).
+  testWidgets('under Cursor\'s look the text area rests a line lower', (
+    tester,
+  ) async {
+    addTearDown(() => ChatLook.current.value = ChatLook.baocode);
+    await pumpScreen(tester);
+    double height() => tester.getSize(find.byType(ChatComposer)).height;
+    final baocode = height();
+    await tester.pumpWidget(const SizedBox());
+    ChatLook.current.value = ChatLook.cursor;
+    await pumpScreen(tester);
+    expect(height(), closeTo(baocode - 20, 0.5));
+    // A second line grows it.
+    final resting = height();
+    await typeText(tester, 'one\ntwo');
+    expect(height(), greaterThan(resting));
   });
 
   testWidgets('text area keeps its resting height, grows, then scrolls', (
