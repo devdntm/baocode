@@ -41,6 +41,9 @@ import 'widgets/lazy_segment.dart' show SelectionEndHolder;
 import 'widgets/turn_footer.dart';
 import 'widgets/user_message_bubble.dart';
 import '../base/safe_selection_indexes.dart';
+// fork: Cursor's checkpoints (docs/fork.md).
+import '../fork/checkpoints.dart';
+import '../fork/cursor_look.dart';
 
 /// Virtualized, selectable conversation history followed by the live turn.
 /// Sticks to the bottom while the user is there.
@@ -2200,6 +2203,23 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   }
 
   void _submitEdit(int index, ComposerMessage message) {
+    // fork: chat.look, Cursor's: an older message with files changed after
+    // it asks whether to put them back first (lib/fork/checkpoints.dart).
+    if (_feed case final RestoresCheckpoints checkpoints
+        when ChatLook.isCursor && checkpoints.canRestoreAt(index)) {
+      unawaited(
+        askRevertOnResend(context).then((revert) {
+          if (revert == null || !mounted) return;
+          if (revert) checkpoints.revertFilesFrom(index);
+          _submitEdited(index, message);
+        }),
+      );
+      return;
+    }
+    _submitEdited(index, message);
+  }
+
+  void _submitEdited(int index, ComposerMessage message) {
     _feed.editing = null;
     if (!_scrolledPast(index)) _animateItem(index);
     setState(() {
@@ -2307,7 +2327,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     }
     Widget? shown;
     if (row.item) {
-      final view = ChatItemView(
+      final itemView = ChatItemView(
         key: item is LiveStatusItem ? _statusKey : ValueKey(index),
         item: item,
         expanded: _isExpanded(index),
@@ -2324,6 +2344,35 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
         },
         onSetGoal: widget.onSetGoal,
       );
+      // fork: Cursor's checkpoints: "Restore checkpoint" under a message of
+      // the user's, what a restore is to drop dimmed
+      // (lib/fork/checkpoints.dart).
+      final checkpoints = _feed is RestoresCheckpoints
+          ? _feed as RestoresCheckpoints
+          : null;
+      final restoredAt = checkpoints?.restoredAt;
+      Widget view = itemView;
+      if (checkpoints != null && item is UserMessageItem) {
+        view = CheckpointHover(
+          onRestore: restoredAt == null && checkpoints.canRestoreAt(index)
+              ? () => checkpoints.restoreCheckpoint(index)
+              : null,
+          child: view,
+        );
+        if (index == restoredAt) {
+          view = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Opacity(opacity: restoredDimming, child: itemView),
+              RestoredNote(onCancel: checkpoints.cancelRestore),
+            ],
+          );
+        }
+      }
+      if (restoredAt != null && index > restoredAt) {
+        view = Opacity(opacity: restoredDimming, child: view);
+      }
       shown = switch (item) {
         // Meanwhile over the item it gave way to.
         LiveStatusItem() when _handoffIndex != null => const SizedBox(

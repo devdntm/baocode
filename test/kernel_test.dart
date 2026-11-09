@@ -3526,6 +3526,128 @@ void main() {
       expect(refusing.users, hasLength(2), reason: 'the edit is not sent');
     });
 
+    // fork: Cursor's checkpoints (lib/fork/checkpoints.dart).
+    test('a checkpoint puts the files back from its message; the next '
+        'message goes on from before it', () async {
+      final cli = FakeCli(
+        answers: {
+          'rewind_files': {'canRewind': true, 'filesChanged': <String>[]},
+          'rewind_conversation': {'rewound': true},
+        },
+      );
+      final descriptor = KernelDescriptor(
+        id: 'claude-code',
+        label: 'Claude Code',
+        icon: Icons.auto_awesome_rounded,
+        description: '',
+        create: (context) => ClaudeCodeKernel(
+          MockKernels.claudeCode,
+          context,
+          start: (_) async => cli,
+        ),
+      );
+      final session = ChatSession(
+        kernel: descriptor,
+        kernels: [descriptor],
+        historyCount: 0,
+      );
+      addTearDown(session.dispose);
+      for (final text in ['one', 'two']) {
+        session.send(ComposerMessage(text: text));
+        await pumpEventQueue();
+        if (text == 'two') {
+          // The agent edits a file in the second turn.
+          cli.push({
+            'type': 'assistant',
+            'session_id': 's',
+            'uuid': 'a-edit',
+            'message': {
+              'id': 'm-edit',
+              'role': 'assistant',
+              'content': [
+                {
+                  'type': 'tool_use',
+                  'id': 'e1',
+                  'name': 'Edit',
+                  'input': {
+                    'file_path': '/p/a.txt',
+                    'old_string': 'a',
+                    'new_string': 'b',
+                  },
+                },
+              ],
+            },
+          });
+          cli.push({
+            'type': 'user',
+            'session_id': 's',
+            'uuid': 'r-edit',
+            'message': {
+              'role': 'user',
+              'content': [
+                {'type': 'tool_result', 'tool_use_id': 'e1', 'content': 'ok'},
+              ],
+            },
+            'tool_use_result': {
+              'filePath': '/p/a.txt',
+              'oldString': 'a',
+              'newString': 'b',
+              'originalFile': 'a\n',
+              'structuredPatch': [
+                {
+                  'oldStart': 1,
+                  'oldLines': 1,
+                  'newStart': 1,
+                  'newLines': 1,
+                  'lines': ['-a', '+b'],
+                },
+              ],
+            },
+          });
+          await pumpEventQueue();
+        }
+        cli.push({
+          'type': 'result',
+          'subtype': 'success',
+          'is_error': false,
+          'session_id': 's',
+        });
+        await pumpEventQueue();
+      }
+      final [_, second] = [
+        for (final user in cli.users) user['uuid'] as String,
+      ];
+      int indexOf(String text) => [
+        for (var i = 0; i < session.itemCount; i++)
+          if (session.itemAt(i) case UserMessageItem(text: final said)
+              when said == text)
+            i,
+      ].single;
+      final two = indexOf('two');
+      expect(session.canRestoreAt(indexOf('one')), isTrue);
+      expect(session.canRestoreAt(two), isTrue);
+
+      session.restoreCheckpoint(two);
+      await pumpEventQueue();
+      expect(cli.requests('rewind_files').single['user_message_id'], second);
+      expect(session.restoredAt, two);
+
+      session.send(const ComposerMessage(text: 'THREE'));
+      await pumpEventQueue();
+      expect(
+        cli.requests('rewind_conversation').single['target_message_uuid'],
+        second,
+      );
+      expect(session.restoredAt, isNull);
+      expect(
+        [
+          for (var i = 0; i < session.itemCount; i++)
+            if (session.itemAt(i) case UserMessageItem(:final text)) text,
+        ],
+        ['one', 'THREE'],
+      );
+    });
+
     test('reports cost, limits and what fills the context', () async {
       final cli = FakeCli();
       final (:kernel, :transcript, events: _) = claude(cli);

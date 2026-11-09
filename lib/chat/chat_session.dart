@@ -18,6 +18,8 @@ import 'mock_conversation.dart';
 import 'open_editor.dart';
 import 'review/change_review.dart';
 import 'review/review_store.dart';
+// fork: Cursor's checkpoints (docs/fork.md).
+import '../fork/checkpoints.dart';
 
 /// Opens the review of a project's changes (see [ChangeReview.open]).
 typedef ChangeReviewOpener = Future<ChangeReview?> Function(
@@ -131,7 +133,9 @@ class ModelSettingChoice {
 /// waiting, the model in effect) is projected from those or read from the
 /// kernel. The UI reaches what the kernel can do through the facets here,
 /// null when the kernel does not declare it.
-class ChatSession extends ChangeNotifier implements ChatFeed {
+// fork: RestoresCheckpoints, Cursor's checkpoints (lib/fork/checkpoints.dart).
+class ChatSession extends ChangeNotifier
+    implements ChatFeed, RestoresCheckpoints {
   ChatSession({
     KernelDescriptor? kernel,
     List<KernelDescriptor>? kernels,
@@ -265,6 +269,9 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
     review.session = sessionId;
     switch (event) {
       case TurnEnded():
+        unawaited(review.look());
+      // fork: files put back to a checkpoint (lib/fork/checkpoints.dart).
+      case ChangesReverted():
         unawaited(review.look());
       case FileEdited(:final change, :final original):
         review.report(change, original: original);
@@ -1136,6 +1143,13 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
     List<String> notes = const [],
   }) {
     if (message.isEmpty || !canSend) return;
+    // fork: a checkpoint restored: the conversation goes on from before
+    // its message, what came after it dropped (lib/fork/checkpoints.dart).
+    if (_restoredAt case final at?) {
+      _restoredAt = null;
+      editMessage(at, message, from: from);
+      return;
+    }
     final turn = KernelTurn(
       id: newTurnId(),
       // Pastes too long to send, kept in files the agent reads; a remote
@@ -1236,6 +1250,59 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
   }
 
   void stop() => _kernel.cancel();
+
+  // fork: Cursor's checkpoints (lib/fork/checkpoints.dart) ----------------
+
+  int? _restoredAt;
+
+  @override
+  int? get restoredAt => _restoredAt;
+
+  @override
+  bool canRestoreAt(int index) {
+    if (_kernel is! RevertsChanges || _kernel is! RewindsConversation) {
+      return false;
+    }
+    if (index >= _transcript.length) return false;
+    if (itemAt(index) case UserMessageItem(fromAgent: null, queued: false)) {
+      if (_transcript.idAt(index) == null) return false;
+      // The agent's edits from this message's turn on.
+      return _transcript.edits.any(
+        (edit) => switch (edit.turnId) {
+          final turn? => (_transcript.indexOf(turn) ?? -1) >= index,
+          null => false,
+        },
+      );
+    }
+    return false;
+  }
+
+  @override
+  void restoreCheckpoint(int index) {
+    if (!canRestoreAt(index)) return;
+    revertFilesFrom(index);
+    _restoredAt = index;
+    notifyListeners();
+  }
+
+  @override
+  void revertFilesFrom(int index) {
+    final id = _transcript.idAt(index);
+    if (id == null) return;
+    if (_kernel case final RevertsChanges kernel) {
+      stop();
+      // The review looks at the files again once they are back
+      // (ChangesReverted, _reviewEvent).
+      kernel.revertChanges(sinceTurn: id);
+    }
+  }
+
+  @override
+  void cancelRestore() {
+    if (_restoredAt == null) return;
+    _restoredAt = null;
+    notifyListeners();
+  }
 
   void answer(InteractionAnswer answer) {
     if (pendingInteraction case final request?) {

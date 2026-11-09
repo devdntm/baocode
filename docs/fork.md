@@ -112,6 +112,8 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/chat/composer/composer_picker.dart` | `_buildPill`: режим — `CursorModePill` при `chat.look: cursor` |
 | `lib/chat/chat_screen.dart` | `_footUnder`: в IDE ветка и размер контекста под полем ввода; `RunCommandPanel` вместо `InteractionPanel` для вопроса approve-blocked |
 | `lib/chat/widgets/command_step.dart` | `CursorCommandCard` при `chat.look: cursor` |
+| `lib/chat/chat_session.dart` | `RestoresCheckpoints`: `canRestoreAt`, `restoreCheckpoint`, `revertFilesFrom`, `restoredAt` (в `send` — с места чекпоинта); `ChangesReverted` перечитывает ревью |
+| `lib/chat/chat_history_view.dart` | `CheckpointHover` под сообщением, бледные строки после чекпоинта, вопрос в `_submitEdit` |
 | `lib/chat/widgets/shell_highlight.dart` | `shellPrograms`: программы команды для заголовка карточки |
 | `lib/chat/step_folds.dart` | `isQuickStep`: команды не сворачиваются в «Ran N commands» при `chat.look: cursor` |
 | `lib/ide/workbench/parts/explorer_view.dart` | `PlanExplorerPane`: раздел Plans в Explorer |
@@ -314,6 +316,14 @@ CSS самого Cursor (`/Applications/Cursor.app/.../workbench.*.css`, `.rende
   у цитаты файла заголовок остаётся), строки не переносятся
   (`code_citation.dart`, `_CodeCardState`). В markdown — заливка цвета текста
   8% без рамки, радиус 6, отступы 10/8.
+- **Чекпоинты** ([`checkpoints.dart`](../lib/fork/checkpoints.dart)). Под своим
+  сообщением, у которого после него есть правки агента, при наведении —
+  «Restore checkpoint». После подтверждения файлы возвращаются к состоянию до
+  этого сообщения (`rewind_files` Claude Code, правки его инструментов, не
+  команд), сообщение и всё после него бледнеют; следующее сообщение идёт с
+  этого места (`rewind_conversation`, как правка сообщения), «Keep the
+  conversation» снимает это. Правка старого сообщения с правками после него
+  спрашивает: «Revert and submit» / «Continue without reverting».
 - **Поле ввода** на строку ниже: текст сразу над кнопками. Режим (Agent, Ask,
   Plan) — круглая плашка цвета текста без рамки, надпись и иконка светлые
   ([`mode_pill.dart`](../lib/fork/mode_pill.dart), `ComposerPicker._buildPill`).
