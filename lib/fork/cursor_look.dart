@@ -114,8 +114,9 @@ abstract final class CursorType {
   static TextStyle get inlineCodePad =>
       AppFonts.uiCodeStyle(12 * 0.3 / 0.6).copyWith(height: 1.4);
 
-  /// Bold: medium (500), in the text's color.
-  static const strong = TextStyle(fontWeight: FontWeight.w500);
+  /// Bold: semibold, in the text's color. Cursor's CSS says 500, but drawn
+  /// by Chromium with macOS's font smoothing it reads as 600 does here.
+  static const strong = TextStyle(fontWeight: FontWeight.w600);
 
   /// `h1` to `h6`: 17, 17, 14, 13 and the text's, semibold (590) on
   /// lines 1.5 high, in the primary text color.
@@ -135,9 +136,9 @@ abstract final class CursorType {
   /// under BaoCode's.
   static MarkdownEditorStyle markdown(MarkdownEditorStyle style) {
     if (!ChatLook.isCursor) return style;
-    // As Cursor's preview, measured on it: headings bolder and bigger than
-    // the chat's (20 for `##`), on tight lines; bold semibold.
-    const heading = TextStyle(fontWeight: FontWeight.w700, height: 1.25);
+    // As Cursor's preview, measured on it: headings bigger than the chat's
+    // (20 for `##`), semibold on tight lines; bold semibold too.
+    const heading = TextStyle(fontWeight: FontWeight.w600, height: 1.25);
     return style.copyWith(
       text: style.text.merge(
         TextStyle(
@@ -160,7 +161,7 @@ abstract final class CursorType {
       headingSpacing: const [(6, 0), (6, 0), (6, 0), (6, 0), (6, 0)],
       // No line under the big headings, as Cursor's (none to set back).
       headingRule: const Color(0x00000000),
-      bold: const TextStyle(fontWeight: FontWeight.w600),
+      bold: strong,
       code: inlineCode,
       codeBackground: inlineCodeBackground,
       blank: const TextStyle(fontSize: textSize, height: gap / textSize),

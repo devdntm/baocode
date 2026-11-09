@@ -74,7 +74,7 @@ void main() {
     expect(cursor.text.height, CursorType.textHeight);
     expect(cursor.text.letterSpacing, closeTo(CursorType.tracking(14), 1e-9));
     expect(cursor.heading(2).fontSize, 20);
-    expect(cursor.heading(2).fontWeight, FontWeight.w700);
+    expect(cursor.heading(2).fontWeight, FontWeight.w600);
     expect(cursor.bold.fontWeight, FontWeight.w600);
     expect(cursor.codePadding, closeTo(3.6, 1e-9));
     expect(cursor.listGap, CursorType.gap);
@@ -103,7 +103,7 @@ void main() {
     expect(text.height, 1.6);
     expect(text.letterSpacing, closeTo(CursorType.tracking(14), 1e-9));
     final bold = _styleOf(tester, 'bold');
-    expect(bold.fontWeight, FontWeight.w500);
+    expect(bold.fontWeight, FontWeight.w600);
     expect(bold.color, AppColors.text);
     final code = _styleOf(tester, 'code');
     expect(code.fontFamily, AppFonts.mono);
