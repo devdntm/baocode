@@ -312,15 +312,19 @@ for (const extension of themeExtensions) {
 const localThemes = [
   { extension: 'theme-bao', id: 'Bao Dark', label: 'Bao Dark', uiTheme: 'vs-dark', path: 'themes/bao-dark-color-theme.json' },
   { extension: 'theme-bao', id: 'Bao Light', label: 'Bao Light', uiTheme: 'vs', path: 'themes/bao-light-color-theme.json' },
+  // fork: Cursor's, as the fork's IDE has it (docs/fork.md); whole, no include.
+  { extension: 'theme-cursor', id: 'Cursor Dark Midnight', label: 'Cursor Dark Midnight', uiTheme: 'vs-dark', path: 'themes/cursor-dark-midnight-color-theme.json' },
 ];
 for (const theme of localThemes) {
   const assetPath = `themes/${theme.extension}/${theme.path}`;
   files.set(assetPath, await readFile(new URL(`textmate_themes/${theme.extension}/${theme.path}`, import.meta.url)));
   themes.push({ ...theme, path: assetPath });
-  // The bundled theme it includes, listed or not.
+  // The bundled theme it includes, listed or not (fork: where it has one).
   const { include } = parseJsonc(files.get(assetPath).toString('utf8'));
-  const [, extension, relativePath] = include.match(/^\.\.\/\.\.\/([^/]+)\/(.+)$/);
-  await copyTheme(extension, relativePath);
+  if (include) {
+    const [, extension, relativePath] = include.match(/^\.\.\/\.\.\/([^/]+)\/(.+)$/);
+    await copyTheme(extension, relativePath);
+  }
 }
 
 // --- License: VS Code's MIT license, each bundled extension's cgmanifest.json

@@ -134,6 +134,8 @@ flutter:
     - assets/textmate/grammars/yaml/
     - assets/textmate/grammars/yaml/syntaxes/
     - assets/textmate/themes/theme-bao/themes/
+    # fork: Cursor's theme (docs/fork.md).
+    - assets/textmate/themes/theme-cursor/themes/
     - assets/textmate/themes/theme-defaults/themes/
     - assets/textmate/themes/theme-kimbie-dark/
     - assets/textmate/themes/theme-kimbie-dark/themes/

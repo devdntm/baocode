@@ -2387,6 +2387,13 @@
       "label": "Bao Light",
       "uiTheme": "vs",
       "path": "themes/theme-bao/themes/bao-light-color-theme.json"
+    },
+    {
+      "extension": "theme-cursor",
+      "id": "Cursor Dark Midnight",
+      "label": "Cursor Dark Midnight",
+      "uiTheme": "vs-dark",
+      "path": "themes/theme-cursor/themes/cursor-dark-midnight-color-theme.json"
     }
   ]
 }

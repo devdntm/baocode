@@ -770,6 +770,9 @@ void main() {
 
     await _openPicker(tester);
     await _key(tester, LogicalKeyboardKey.arrowDown);
+    // fork: Cursor Dark Midnight between them (docs/fork.md).
+    expect(_active(tester), 'Cursor Dark Midnight');
+    await _key(tester, LogicalKeyboardKey.arrowDown);
     expect(_active(tester), 'Dark Modern');
     await _key(tester, LogicalKeyboardKey.enter);
     await settle();

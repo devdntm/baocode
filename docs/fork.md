@@ -102,6 +102,8 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `packages/bao_markdown/lib/src/editor/md_editor.dart` | параметр `footer`: виджет после строк в той же прокрутке |
 | `packages/bao_markdown/lib/src/editor/md_style.dart`, `md_display.dart`, `md_editor.dart` | `MarkdownEditorStyle`: `blank` (пустая строка), `codePadding` (отступы у кода), `bullet`, `listGap`/`itemGap` (поля списков; `_gapOver`, поле `gap` в `_RowKey`), `fitTables` (`md_table.dart`: `build` → `_build` с шириной) |
 | `lib/ide/markdown/markdown_preview.dart`, `lib/stash/stash_editor.dart` | стиль редактора через `CursorType.markdown` |
+| `packages/bao_editor/tool/generate_textmate_assets.mjs`, `packages/bao_editor/pubspec.yaml`, `assets/textmate/manifest.json`, `LICENSE.txt` | встроенная тема Cursor Dark Midnight |
+| `test/theme/theme_sweep_test.dart`, `test/ide/workbench/color_theme_picker_test.dart` | 14 встроенных тем, Cursor Dark Midnight в списке |
 | `pubspec.yaml` | зависимости `yaml` (front matter плана) и `fork_scroll_momentum` (инерция трекпада); ассеты `tool/claude_context/bao_index.js` и `tool/cursor_import/cursor_memsearch_import.py` |
 | `lib/main.dart` | `ChatLook.follow` (`chat.look`), `ScrollMomentum.follow` (`workbench.scroll.momentum`), `gestureSettings` окна (порог трекпада) |
 | `lib/theme/app_theme.dart` | `buildAppTheme`: при `chat.look: cursor` текст темы с трекингом macOS (`CursorType.theme`); `codeStyle`/`uiCodeStyle` без межбуквенного интервала |
@@ -345,6 +347,16 @@ CSS самого Cursor (`/Applications/Cursor.app/.../workbench.*.css`, `.rende
   команда, слева «Ask Every Time ⌄» / «Allowlist 'npm'», справа Skip и Run ⏎
   (Enter, Esc). Ответ — вариант самого мода, логика (`Bash(npm:*)` в
   `permissions.allow`) у него же, так что в терминале это обычный вопрос.
+
+## Встроенная тема Cursor Dark Midnight
+
+Тема Cursor Dark Midnight (из `theme-cursor` в Cursor.app, Anysphere; лицензии у
+файла нет) встроена рядом с Bao Dark/Bao Light: исходник —
+`packages/bao_editor/tool/textmate_themes/theme-cursor/`, в бандле —
+`assets/textmate/themes/theme-cursor/`, запись в `manifest.json`, папка в
+`pubspec.yaml` пакета. Генератор ассетов (`generate_textmate_assets.mjs`) несёт
+её в `localThemes`; у неё нет `include`, поэтому генератор его не требует.
+Остальные темы Cursor ставит «Import from Cursor» расширением.
 
 ## Прокрутка трекпада: `workbench.scroll.momentum`
 
