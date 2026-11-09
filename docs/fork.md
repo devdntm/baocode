@@ -100,6 +100,8 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/kernel/claude_code/claude_code_translator.dart` | `PlanWritten` и при повторном чтении истории (`replayed: replaying`) |
 | `lib/ide/markdown/markdown_preview.dart` | `PlanPreview.footer` (задачи плана под текстом) и `PlanPreview.frontMatter` (у плана — только `overview`) |
 | `packages/bao_markdown/lib/src/editor/md_editor.dart` | параметр `footer`: виджет после строк в той же прокрутке |
+| `packages/bao_markdown/lib/src/editor/md_style.dart`, `md_display.dart` | `MarkdownEditorStyle.blank`: стиль пустой строки (короче при `chat.look: cursor`) |
+| `lib/ide/markdown/markdown_preview.dart`, `lib/stash/stash_editor.dart` | стиль редактора через `CursorType.markdown` |
 | `pubspec.yaml` | зависимости `yaml` (front matter плана) и `fork_scroll_momentum` (инерция трекпада); ассеты `tool/claude_context/bao_index.js` и `tool/cursor_import/cursor_memsearch_import.py` |
 | `lib/main.dart` | `ChatLook.follow` (`chat.look`), `ScrollMomentum.follow` (`workbench.scroll.momentum`), `gestureSettings` окна (порог трекпада) |
 | `lib/theme/app_theme.dart` | `buildAppTheme`: при `chat.look: cursor` текст темы с трекингом macOS (`CursorType.theme`); `codeStyle`/`uiCodeStyle` без межбуквенного интервала |
@@ -284,6 +286,10 @@ CSS самого Cursor (`/Applications/Cursor.app/.../workbench.*.css`, `.rende
 - **Чат:** 14/22,4; абзацы через 10, заголовки 17/17/14/13 с 16 до и 4 после;
   жирный — medium в цвете текста; встроенный код — Menlo 12 на плашке цвета
   текста (8%), отступ 0,3 em, радиус 4; списки с отступом 28.
+- **Markdown вне чата** (предпросмотр `.md` в IDE, планы, предпросмотр файла в
+  чате, Customize, Stash) — тот же текст через `CursorType.markdown`: размер,
+  интервал, заголовки, жирный, встроенный код; пустая строка между абзацами
+  10 pt (`MarkdownEditorStyle.blank`, правка в `bao_markdown`).
 - **Поле ввода** на строку ниже: текст сразу над кнопками. Режим (Agent, Ask,
   Plan) — круглая плашка цвета текста без рамки, надпись и иконка светлые
   ([`mode_pill.dart`](../lib/fork/mode_pill.dart), `ComposerPicker._buildPill`).

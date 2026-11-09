@@ -6,6 +6,7 @@
 // `--cursor-font-size-*`, `--cursor-spacing-*`), measured against its
 // screenshots: the same SF Pro and Menlo, 14px text on 22.4px lines.
 
+import 'package:bao_markdown/bao_markdown.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
@@ -126,6 +127,42 @@ abstract final class CursorType {
   static const gap = 10.0;
   static const headingGapBefore = 16.0;
   static const headingGapAfter = 4.0;
+
+  /// [style], a markdown editor's (the IDE's preview, a plan's, a
+  /// stash's), as the chat's text under Cursor's look: the same size, line
+  /// and tracking, headings, bold and inline code; an empty line between
+  /// paragraphs [gap] high, as the chat's paragraphs are apart. As it is
+  /// under BaoCode's.
+  static MarkdownEditorStyle markdown(MarkdownEditorStyle style) {
+    if (!ChatLook.isCursor) return style;
+    final heading = TextStyle(
+      fontWeight: FontWeight.w600,
+      color: AppColors.textPrimary,
+      height: headingHeight,
+    );
+    return style.copyWith(
+      text: style.text.merge(
+        TextStyle(
+          fontSize: textSize,
+          height: textHeight,
+          letterSpacing: tracking(textSize),
+        ),
+      ),
+      headings: [
+        for (final size in headingSizes)
+          heading.copyWith(fontSize: size, letterSpacing: tracking(size)),
+      ],
+      // With the empty line before it, 16 over a heading; after it, the
+      // empty line alone.
+      headingSpacing: const [(6, 0), (6, 0), (6, 0), (6, 0), (6, 0)],
+      // No line under the big headings, as Cursor's (none to set back).
+      headingRule: const Color(0x00000000),
+      bold: strong,
+      code: inlineCode,
+      codeBackground: inlineCodeBackground,
+      blank: const TextStyle(fontSize: textSize, height: gap / textSize),
+    );
+  }
 
   /// A list's items are indented 28, their marker in the middle of that;
   /// 2 between them (`--cursor-spacing-0-5`).

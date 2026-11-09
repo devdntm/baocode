@@ -40,6 +40,8 @@ import 'stash_io_stub.dart' if (dart.library.io) 'stash_io.dart' as io;
 import 'stash_markdown.dart';
 import 'stash_note.dart' show StashNote;
 import 'stash_store.dart';
+// fork: chat.look (docs/fork.md).
+import '../fork/cursor_look.dart';
 
 /// What the editor's pictures and files need: where the stash's folder
 /// is, and the stash's number (made on the first picture, for a new one
@@ -1020,7 +1022,8 @@ class StashEditorState extends State<StashEditor> implements FileDropDelegate {
     final editor = MarkdownEditor(
       key: _editorKey,
       controller: _controller,
-      style: _style(context),
+      // fork: chat.look, as the chat's text (docs/fork.md).
+      style: CursorType.markdown(_style(context)),
       embeds: _embeds,
       focusNode: _focus,
       scrollController: _scroll,

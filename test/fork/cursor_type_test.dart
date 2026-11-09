@@ -1,3 +1,4 @@
+import 'package:bao_markdown/bao_markdown.dart';
 import 'package:baocode/chat/widgets/inline_code.dart';
 import 'package:baocode/chat/widgets/markdown_view.dart';
 import 'package:baocode/fork/cursor_look.dart';
@@ -59,6 +60,28 @@ void main() {
       closeTo(CursorType.tracking(12), 1e-9),
     );
     expect(AppFonts.codeStyle(12).letterSpacing, 0);
+  });
+
+  test('a markdown editor\'s style: as before under BaoCode\'s look, as '
+      'the chat\'s text under Cursor\'s', () {
+    const base = MarkdownEditorStyle(
+      text: TextStyle(fontSize: 14, height: 1.65),
+    );
+    expect(CursorType.markdown(base), same(base));
+    ChatLook.current.value = ChatLook.cursor;
+    final cursor = CursorType.markdown(base);
+    expect(cursor.text.fontSize, CursorType.textSize);
+    expect(cursor.text.height, CursorType.textHeight);
+    expect(cursor.text.letterSpacing, closeTo(CursorType.tracking(14), 1e-9));
+    expect(cursor.heading(1).fontSize, 17);
+    expect(cursor.heading(3).fontSize, 14);
+    expect(cursor.bold.fontWeight, FontWeight.w500);
+    expect(cursor.code.letterSpacing, 0);
+    expect(
+      cursor.text.merge(cursor.blank).fontSize! *
+          cursor.text.merge(cursor.blank).height!,
+      closeTo(CursorType.gap, 1e-9),
+    );
   });
 
   testWidgets('BaoCode\'s look stays as upstream\'s', (tester) async {

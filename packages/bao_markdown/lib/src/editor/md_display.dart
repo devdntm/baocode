@@ -62,6 +62,8 @@ TextStyle lineStyleOf(MdLineInfo info, MarkdownEditorStyle style) {
     MdLineKind.math ||
     MdLineKind.mathClose ||
     MdLineKind.mathLine => style.text.merge(style.codeBlock),
+    // fork: a shorter empty line where the style has one (docs/fork.md).
+    MdLineKind.blank when style.blank != null => style.text.merge(style.blank),
     _ => style.text,
   };
   if (info.quoteDepth > 0) line = line.merge(style.quote);

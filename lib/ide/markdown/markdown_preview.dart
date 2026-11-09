@@ -39,6 +39,8 @@ import 'markdown_model_source.dart';
 import 'markdown_paste.dart';
 import 'markdown_table_menu.dart';
 import 'markdown_task_box.dart';
+// fork: chat.look (docs/fork.md).
+import '../../fork/cursor_look.dart';
 
 export 'markdown_links.dart';
 
@@ -525,7 +527,8 @@ class IdeMarkdownPreviewState extends State<IdeMarkdownPreview> {
           final editor = MarkdownEditor(
             key: _editorKey,
             controller: _controller,
-            style: _style(context),
+            // fork: chat.look, as the chat's text (docs/fork.md).
+            style: CursorType.markdown(_style(context)),
             embeds: _embeds,
             focusNode: _focus,
             scrollController: _scroll,

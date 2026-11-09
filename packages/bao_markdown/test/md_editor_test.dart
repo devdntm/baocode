@@ -102,6 +102,27 @@ Future<void> _type(WidgetTester tester, String text) async {
 }
 
 void main() {
+  // fork: a shorter empty line where the style has one (docs/fork.md).
+  testWidgets('an empty line as high as its style says, others as before', (
+    tester,
+  ) async {
+    double gap(MarkdownEditorStyle style) {
+      final one = tester.getRect(find.text('one', findRichText: true));
+      final two = tester.getRect(find.text('two', findRichText: true));
+      return two.top - one.top;
+    }
+
+    await _pump(tester, MarkdownController(text: 'one\n\ntwo'));
+    final full = gap(_style);
+    await _pump(
+      tester,
+      MarkdownController(text: 'one\n\ntwo'),
+      style: _style.copyWith(blank: const TextStyle(height: 10 / 14)),
+    );
+    expect(full, closeTo(2 * 14 * 1.5, 0.5));
+    expect(gap(_style), closeTo(14 * 1.5 + 10, 0.5));
+  });
+
   test('text set from elsewhere replaces only what differs', () {
     final controller = MarkdownController(text: 'a\nb\nc\nd');
     final ids = [for (var i = 0; i < 4; i++) controller.lines.idOf(i)];

@@ -48,6 +48,7 @@ class MarkdownEditorStyle {
     this.placeholder = const TextStyle(color: Color(0x80808080)),
     this.colorOf = _cssColor,
     this.table,
+    this.blank,
   });
 
   /// The text's: its font, size, line height and color.
@@ -110,6 +111,10 @@ class MarkdownEditorStyle {
   /// A table's look; one from the code blocks' colors where null.
   final MdTableStyle? table;
 
+  /// An empty line's, over [text]: a shorter one parts paragraphs as a
+  /// page's margin does (fork, `chat.look`); as tall as text where null.
+  final TextStyle? blank;
+
   MdTableStyle get tableStyle =>
       table ??
       MdTableStyle(
@@ -156,6 +161,7 @@ class MarkdownEditorStyle {
     TextStyle? placeholder,
     Color? Function(String css)? colorOf,
     MdTableStyle? table,
+    TextStyle? blank,
   }) => MarkdownEditorStyle(
     text: text ?? this.text,
     headings: headings ?? this.headings,
@@ -186,6 +192,7 @@ class MarkdownEditorStyle {
     placeholder: placeholder ?? this.placeholder,
     colorOf: colorOf ?? this.colorOf,
     table: table ?? this.table,
+    blank: blank ?? this.blank,
   );
 
   @override
@@ -219,7 +226,8 @@ class MarkdownEditorStyle {
       other.composing == composing &&
       other.placeholder == placeholder &&
       other.colorOf == colorOf &&
-      other.table == table;
+      other.table == table &&
+      other.blank == blank;
 
   @override
   int get hashCode => Object.hashAll([
@@ -252,6 +260,7 @@ class MarkdownEditorStyle {
     placeholder,
     colorOf,
     table,
+    blank,
   ]);
 }
 
