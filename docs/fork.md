@@ -322,7 +322,7 @@ CSS самого Cursor (`/Applications/Cursor.app/.../workbench.*.css`, `.rende
 - **Команды** ([`command_card.dart`](../lib/fork/command_card.dart)): карточка
   «›_ описание  cd, python3»; пока ничего не выведено — одна строка; когда вывод
   есть — его последние 4 строки, бледнее кверху; по клику — команда и весь вывод.
-  Каждая команда отдельно, не в «Ran N commands».
+  Команда — в цветах темы редактора (грамматика shell через `colorizeBlock`, как у блоков кода). Каждая команда отдельно, не в «Ran N commands».
 - **Отказ auto mode** ([`run_command_panel.dart`](../lib/fork/run_command_panel.dart)):
   вопрос мода approve-blocked (заголовок `Auto mode`, варианты `Разрешить`,
   `Отклонить`, `Allowlist '<программа>'`) рисуется карточкой «Run command: npm»:

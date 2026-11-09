@@ -1,5 +1,6 @@
 import 'package:baocode/chat/chat_models.dart';
 import 'package:baocode/chat/step_folds.dart';
+import 'package:baocode/chat/widgets/code_citation.dart';
 import 'package:baocode/chat/widgets/command_step.dart';
 import 'package:baocode/chat/widgets/shell_highlight.dart';
 import 'package:baocode/fork/command_card.dart';
@@ -59,9 +60,7 @@ void main() {
     expect(isQuickStep(item), isTrue);
   });
 
-  testWidgets('running with nothing printed: its header alone', (
-    tester,
-  ) async {
+  testWidgets('running with nothing printed: its header alone', (tester) async {
     await _pump(tester, status: CommandStatus.running);
     expect(find.byType(CursorCommandCard), findsOneWidget);
     expect(find.text('cd, python3'), findsOneWidget);
@@ -95,6 +94,54 @@ void main() {
     );
     expect(find.textContaining('import json'), findsOneWidget);
     expect(find.textContaining('line 1\n'), findsOneWidget);
+  });
+
+  testWidgets('open: the command in the editor theme\'s colors, by its '
+      'shell grammar', (tester) async {
+    const themed = Color(0xFF123456);
+    String? asked;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(),
+        home: Scaffold(
+          body: CodeCitationScope(
+            colorizeBlock: (language, code) async {
+              asked = language;
+              return [
+                for (final line in code.split('\n'))
+                  [
+                    TextSpan(
+                      text: line,
+                      style: const TextStyle(color: themed),
+                    ),
+                  ],
+              ];
+            },
+            child: const CommandStep(
+              command: 'cd /work && ls',
+              description: 'List the work',
+              output: 'a',
+              expanded: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(asked, 'bash');
+    final colored = tester.widgetList<RichText>(find.byType(RichText)).expand((
+      rich,
+    ) {
+      final spans = <TextSpan>[];
+      rich.text.visitChildren((span) {
+        if (span is TextSpan && span.text == 'cd /work && ls') {
+          spans.add(span);
+        }
+        return true;
+      });
+      return spans;
+    });
+    expect(colored.single.style?.color, themed);
   });
 
   testWidgets('BaoCode\'s look keeps its step', (tester) async {

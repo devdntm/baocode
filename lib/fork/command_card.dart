@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../base/smooth_scroll.dart';
 import '../chat/chat_models.dart';
+import '../chat/widgets/code_citation.dart' show CodeCitationScope;
 import '../chat/widgets/hover_builder.dart';
 import '../chat/widgets/shell_highlight.dart';
 import '../chat/widgets/shimmer_text.dart';
@@ -14,6 +15,7 @@ import '../chat/widgets/step_header.dart';
 import '../chat/widgets/terminal_output.dart';
 import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
+import '../theme/workbench_theme.dart' show themeColors;
 
 class CursorCommandCard extends StatelessWidget {
   const CursorCommandCard({
@@ -193,18 +195,7 @@ class CursorCommandCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text: '\$ ',
-                    style: TextStyle(color: AppColors.textFaint),
-                  ),
-                  ...highlightShell(command),
-                ],
-              ),
-              style: stepMono,
-            ),
+            _ThemedCommand(command),
             if (printed.text.isNotEmpty) ...[
               const SizedBox(height: 8),
               if (printed.styled)
@@ -248,4 +239,69 @@ class _BodyScrollState extends State<_BodyScroll> {
       child: widget.child,
     ),
   );
+}
+
+/// `$ command` in the editor theme's colors, as a code block's (its shell
+/// grammar, through [CodeCitationScope.colorizeBlock]); the terminal's
+/// light coloring ([highlightShell]) until that comes, or where there is
+/// none.
+class _ThemedCommand extends StatefulWidget {
+  const _ThemedCommand(this.command);
+
+  final String command;
+
+  @override
+  State<_ThemedCommand> createState() => _ThemedCommandState();
+}
+
+class _ThemedCommandState extends State<_ThemedCommand> {
+  List<List<TextSpan>>? _lines;
+  String? _colored;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _color();
+  }
+
+  @override
+  void didUpdateWidget(_ThemedCommand old) {
+    super.didUpdateWidget(old);
+    if (old.command != widget.command) _color();
+  }
+
+  void _color() {
+    final command = widget.command;
+    if (command == _colored) return;
+    _colored = command;
+    final colorize = CodeCitationScope.maybeOf(context)?.colorizeBlock;
+    if (colorize == null) return;
+    colorize('bash', command).then((lines) {
+      if (!mounted || widget.command != command || lines == null) return;
+      setState(() => _lines = lines);
+    }, onError: (_) {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = _lines;
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: '\$ ',
+            style: TextStyle(color: AppColors.textFaint),
+          ),
+          if (lines == null)
+            ...highlightShell(widget.command)
+          else
+            for (final (i, line) in lines.indexed) ...[
+              if (i > 0) const TextSpan(text: '\n'),
+              ...line,
+            ],
+        ],
+      ),
+      style: stepMono.copyWith(color: themeColors['editor.foreground']),
+    );
+  }
 }
