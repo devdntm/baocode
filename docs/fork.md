@@ -107,6 +107,7 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/theme/app_theme.dart` | `buildAppTheme`: при `chat.look: cursor` текст темы с трекингом macOS (`CursorType.theme`); `codeStyle`/`uiCodeStyle` без межбуквенного интервала |
 | `lib/chat/widgets/markdown_view.dart` | `baseStyle`/`codeStyle` Cursor; `MarkdownOptions.chat()` и `cursorLook`: отступы блоков, заголовки, жирный, списки, отступы вокруг встроенного кода |
 | `lib/chat/widgets/inline_code.dart` | плашка встроенного кода Cursor: цвет, радиус, одна на строку |
+| `lib/chat/widgets/code_citation.dart` | блок кода Cursor: фон, рамка, радиус, без заголовка (`_plain`), отступы |
 | `lib/chat/composer/composer.dart` | `_minEditorHeight`: на строку ниже при `chat.look: cursor` |
 | `lib/chat/composer/composer_picker.dart` | `_buildPill`: режим — `CursorModePill` при `chat.look: cursor` |
 | `lib/chat/chat_screen.dart` | `_footUnder`: в IDE ветка и размер контекста под полем ввода; `RunCommandPanel` вместо `InteractionPanel` для вопроса approve-blocked |
@@ -304,6 +305,11 @@ CSS самого Cursor (`/Applications/Cursor.app/.../workbench.*.css`, `.rende
   не влезают слова ([`cursor_table.dart`](../lib/fork/cursor_table.dart);
   в markdown — `MarkdownEditorStyle.fitTables`). Шапка без заливки, линии
   бледные, радиус 10.
+- **Блоки кода.** В чате — на фоне чата, рамка цвета текста 10%, радиус 10,
+  без строки с языком (язык только подсвечивает; копирование — по наведению;
+  у цитаты файла заголовок остаётся), строки не переносятся
+  (`code_citation.dart`, `_CodeCardState`). В markdown — заливка цвета текста
+  8% без рамки, радиус 6, отступы 10/8.
 - **Поле ввода** на строку ниже: текст сразу над кнопками. Режим (Agent, Ask,
   Plan) — круглая плашка цвета текста без рамки, надпись и иконка светлые
   ([`mode_pill.dart`](../lib/fork/mode_pill.dart), `ComposerPicker._buildPill`).

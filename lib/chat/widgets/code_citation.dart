@@ -19,6 +19,8 @@ import '../side_panel/file_open.dart' show FileOpenScope;
 import 'finite_selection_edges.dart';
 import 'hover_builder.dart';
 import 'will_change_paint.dart';
+// fork: chat.look (docs/fork.md).
+import '../../fork/cursor_look.dart';
 
 /// Code the agent cited from a file, as it is asked to
 /// (`ClaudeLaunch.citingCode`): a block fenced as ```` ```12:15:lib/a.dart ````.
@@ -437,29 +439,38 @@ class _CodeCardState extends State<_CodeCard> {
     });
   }
 
-  /// Plain text: a fence that names no language, nor a file.
+  /// Plain text: a fence that names no language, nor a file. Under
+  /// Cursor's look (fork: chat.look), any code block not a file's: it has
+  /// no title, its language only colors it.
   bool get _plain =>
       widget.citation == null &&
       widget.onPreview == null &&
-      switch (widget.language?.toLowerCase()) {
-        null || 'text' || 'txt' || 'plaintext' => true,
-        _ => false,
-      };
+      (ChatLook.isCursor ||
+          switch (widget.language?.toLowerCase()) {
+            null || 'text' || 'txt' || 'plaintext' => true,
+            _ => false,
+          });
 
   @override
   Widget build(BuildContext context) {
     // Built again for a new theme: its colors for the code.
     _colorSoon();
     final colors = themeColors;
-    final line = colors['chat.requestBorder'];
-    final background = colors['textCodeBlock.background'];
+    // fork: chat.look, Cursor's: on the conversation, a faint edge.
+    final cursor = ChatLook.isCursor;
+    final line = cursor
+        ? AppColors.text.withValues(alpha: 0.1)
+        : colors['chat.requestBorder'];
+    final background = cursor
+        ? const Color(0x00000000)
+        : colors['textCodeBlock.background'];
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: Container(
         decoration: BoxDecoration(
           color: background,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(cursor ? 10 : 8),
           border: Border.all(color: line),
         ),
         clipBehavior: Clip.antiAlias,
@@ -478,7 +489,10 @@ class _CodeCardState extends State<_CodeCard> {
                         // color is often a see-through one.
                         color: Color.alphaBlend(
                           background,
-                          colors['editor.background'],
+                          // fork: chat.look, the conversation's under it.
+                          cursor
+                              ? AppColors.conversationSurface
+                              : colors['editor.background'],
                         ),
                         borderRadius: BorderRadius.circular(5),
                       ),
@@ -734,7 +748,8 @@ class _CodeCardState extends State<_CodeCard> {
         controller: _horizontal,
         thumbVisibility: _hovered,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          // fork: chat.look, Cursor's closer about its lines.
+          padding: EdgeInsets.symmetric(vertical: ChatLook.isCursor ? 5 : 8),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

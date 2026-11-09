@@ -174,6 +174,11 @@ abstract final class CursorType {
       listIndent: 20,
       listGap: gap,
       itemGap: listItemGap,
+      // Its code blocks: a faint fill of the text's color, no edge.
+      codeBlockBackground: AppColors.text.withValues(alpha: 0.08),
+      codeBlockBorder: const Color(0x00000000),
+      codeBlockRadius: 6,
+      codeBlockPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       // Its tables: as wide as the page, the head unfilled, lines faint.
       fitTables: true,
       table: MdTableStyle(
