@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 
 // fork: chat.look, Cursor's type (docs/fork.md).
 import '../../fork/cursor_look.dart';
+import '../../fork/cursor_table.dart';
 import '../../ide/ide_hover.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
@@ -664,7 +665,8 @@ Widget? _block(md.Node node, TextStyle style, MarkdownOptions options) {
           _inlines(
             node.children ?? const [],
             style.copyWith(
-              color: AppColors.textPrimary,
+              // fork: chat.look, Cursor's headings in the text's color.
+              color: options.cursorLook ? style.color : AppColors.textPrimary,
               fontSize: options.headingSizes[level - 1],
               fontWeight: FontWeight.w600,
               height: options.cursorLook ? CursorType.headingHeight : 1.4,
@@ -759,7 +761,12 @@ class _List extends StatelessWidget {
       children: [
         for (final (i, item) in items.indexed)
           Padding(
-            padding: const EdgeInsets.only(top: 2),
+            // fork: chat.look, a loose list's items as paragraphs apart.
+            padding: EdgeInsets.only(
+              top: options.cursorLook && i > 0 && _loose(items)
+                  ? CursorType.gap
+                  : 2,
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -784,6 +791,13 @@ class _List extends StatelessWidget {
       ],
     );
   }
+
+  /// fork: chat.look. Whether a list is loose: its items' text in
+  /// paragraphs (they had empty lines between them).
+  static bool _loose(List<md.Element> items) => items.any(
+    (item) =>
+        item.children?.any((c) => c is md.Element && c.tag == 'p') ?? false,
+  );
 
   static bool _isTask(md.Element item) => switch (item.children?.firstOrNull) {
     md.Element(tag: 'input') => true,
@@ -835,7 +849,17 @@ class _List extends StatelessWidget {
         ),
       );
     }
-    return Text(text, style: style.copyWith(color: AppColors.textMuted));
+    // fork: chat.look, Cursor's bullet: a disc in the text's color, as
+    // tall as its line still.
+    if (options.cursorLook && text == '•') {
+      return Text(text, style: style.merge(CursorType.bullet));
+    }
+    return Text(
+      text,
+      style: options.cursorLook
+          ? style
+          : style.copyWith(color: AppColors.textMuted),
+    );
   }
 
   /// An item's text and blocks: a tight item's text is inline children, a
@@ -940,35 +964,49 @@ class _TableState extends State<_Table> {
     final columns = rows
         .map((row) => row.$2.length)
         .reduce((a, b) => a > b ? a : b);
-    final line = BorderSide(color: themeColors['chat.requestBorder']);
-    final table = Table(
+    // fork: chat.look, Cursor's table: as wide as the conversation, its
+    // head unfilled, all in the text's color, its lines faint
+    // (lib/fork/cursor_table.dart).
+    final cursor = widget.options.cursorLook;
+    final line = BorderSide(
+      color: cursor
+          ? AppColors.text.withValues(alpha: 0.12)
+          : themeColors['chat.requestBorder'],
+    );
+    final headStyle = cursor
+        ? style.copyWith(fontWeight: FontWeight.w600)
+        : style.copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          );
+    Widget table({List<double>? widths}) => Table(
       defaultColumnWidth: const IntrinsicColumnWidth(),
+      columnWidths: widths == null
+          ? null
+          : {
+              for (final (i, width) in widths.indexed)
+                i: FixedColumnWidth(width),
+            },
       // The card draws the edge.
       border: TableBorder.symmetric(inside: line),
       children: [
         for (final (header, cells) in rows)
           TableRow(
-            decoration: header
+            decoration: header && !cursor
                 ? BoxDecoration(color: AppColors.surfaceRaised)
                 : null,
             children: [
               for (var i = 0; i < columns; i++)
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
+                  padding: cursor
+                      ? CursorTable.cellPadding
+                      : const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   child: i < cells.length
                       ? TableCellSelection(
                           child: InlineCodeText(
                             _inlines(
                               cells[i].children ?? const [],
-                              header
-                                  ? style.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary,
-                                    )
-                                  : style,
+                              header ? headStyle : style,
                               widget.options,
                             ),
                           ),
@@ -979,33 +1017,67 @@ class _TableState extends State<_Table> {
           ),
       ],
     );
-    return Align(
+    final radius = BorderRadius.circular(cursor ? CursorTable.radius : 8);
+    Widget card(Widget child) => Align(
       alignment: AlignmentDirectional.centerStart,
       child: Container(
         // The edge over the cells, the header's color clipped to the corners.
         foregroundDecoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: radius,
           border: Border.fromBorderSide(line),
         ),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(borderRadius: radius),
         clipBehavior: Clip.antiAlias,
-        child: HoverScrollbar(
-          controller: _scroll,
-          // The table's selection is its own, not the scroll view's.
-          child: SelectionContainer.disabled(
-            child: SingleChildScrollView(
-              controller: _scroll,
-              scrollDirection: Axis.horizontal,
-              child: TableSelection(
-                registrar: SelectionContainer.maybeOf(context),
-                child: WillChangePaint(child: table),
-              ),
-            ),
-          ),
-        ),
+        child: child,
       ),
     );
+    // fork: chat.look, the columns sharing the conversation's width, their
+    // text wrapping; scrolling as before where their words do not fit.
+    if (cursor) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final widths = CursorTable.widths(
+            [
+              for (final (_, cells) in rows)
+                [for (final cell in cells) cell.textContent],
+            ],
+            style: style,
+            headStyle: headStyle,
+            // Inside the card's edge.
+            width: constraints.maxWidth - 2,
+            textScaler: MediaQuery.textScalerOf(context),
+          );
+          if (widths == null) return card(_scrolling(context, table()));
+          return card(
+            // The table's selection is its own, as the scrolling one's.
+            SelectionContainer.disabled(
+              child: TableSelection(
+                registrar: SelectionContainer.maybeOf(context),
+                child: WillChangePaint(child: table(widths: widths)),
+              ),
+            ),
+          );
+        },
+      );
+    }
+    return card(_scrolling(context, table()));
   }
+
+  /// [table] scrolling sideways, a bar showing while the pointer is over it.
+  Widget _scrolling(BuildContext context, Widget table) => HoverScrollbar(
+    controller: _scroll,
+    // The table's selection is its own, not the scroll view's.
+    child: SelectionContainer.disabled(
+      child: SingleChildScrollView(
+        controller: _scroll,
+        scrollDirection: Axis.horizontal,
+        child: TableSelection(
+          registrar: SelectionContainer.maybeOf(context),
+          child: WillChangePaint(child: table),
+        ),
+      ),
+    ),
+  );
 }
 
 TextSpan _inlines(

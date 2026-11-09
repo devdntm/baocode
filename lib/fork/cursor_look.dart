@@ -169,17 +169,34 @@ abstract final class CursorType {
       codePadding: 12 * 0.3,
       // Its lists: a disc of the text's size, the text 20 in, each level
       // 20 further; 10 over and under a list, 2 between items.
-      bullet: const TextStyle(fontSize: 17, height: textSize * textHeight / 17),
+      bullet: bullet,
       bulletWidth: 20,
       listIndent: 20,
       listGap: gap,
       itemGap: listItemGap,
+      // Its tables: as wide as the page, the head unfilled, lines faint.
+      fitTables: true,
+      table: MdTableStyle(
+        border: AppColors.text.withValues(alpha: 0.12),
+        head: const Color(0x00000000),
+        accent: style.tableStyle.accent,
+        control: style.tableStyle.control,
+        surface: style.tableStyle.surface,
+        shadow: style.tableStyle.shadow,
+        radius: 10,
+      ),
     );
   }
 
   /// A markdown preview's `h1` to `h6` (Cursor's preview: bigger than the
   /// chat's).
   static const markdownHeadingSizes = [24.0, 20.0, 16.0, 14.0, 14.0, 14.0];
+
+  /// A bullet's: a disc bigger than the text's `•`, its line as tall.
+  static const bullet = TextStyle(
+    fontSize: 17,
+    height: textSize * textHeight / 17,
+  );
 
   /// A list's items are indented 28, their marker in the middle of that;
   /// 2 between them (`--cursor-spacing-0-5`).

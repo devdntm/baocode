@@ -53,6 +53,7 @@ class MarkdownEditorStyle {
     this.bullet,
     this.listGap = 0,
     this.itemGap = 0,
+    this.fitTables = false,
   });
 
   /// The text's: its font, size, line height and color.
@@ -132,6 +133,11 @@ class MarkdownEditorStyle {
   final double listGap;
   final double itemGap;
 
+  /// Whether a table is as wide as the page, its columns sharing that by
+  /// what is in them, their text wrapping, as a browser lays one out
+  /// (fork); else each column as wide as its text, the table scrolling.
+  final bool fitTables;
+
   MdTableStyle get tableStyle =>
       table ??
       MdTableStyle(
@@ -183,6 +189,7 @@ class MarkdownEditorStyle {
     TextStyle? bullet,
     double? listGap,
     double? itemGap,
+    bool? fitTables,
   }) => MarkdownEditorStyle(
     text: text ?? this.text,
     headings: headings ?? this.headings,
@@ -218,6 +225,7 @@ class MarkdownEditorStyle {
     bullet: bullet ?? this.bullet,
     listGap: listGap ?? this.listGap,
     itemGap: itemGap ?? this.itemGap,
+    fitTables: fitTables ?? this.fitTables,
   );
 
   @override
@@ -256,7 +264,8 @@ class MarkdownEditorStyle {
       other.codePadding == codePadding &&
       other.bullet == bullet &&
       other.listGap == listGap &&
-      other.itemGap == itemGap;
+      other.itemGap == itemGap &&
+      other.fitTables == fitTables;
 
   @override
   int get hashCode => Object.hashAll([
@@ -294,6 +303,7 @@ class MarkdownEditorStyle {
     bullet,
     listGap,
     itemGap,
+    fitTables,
   ]);
 }
 

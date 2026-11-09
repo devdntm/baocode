@@ -134,6 +134,22 @@ void main() {
     expect(top('q') - top('b'), closeTo(plain[3] - plain[2] + 10, 0.5));
   });
 
+  // fork: a table as wide as the page (docs/fork.md).
+  testWidgets('fitTables: a table as wide as the page, its cells wrapping', (
+    tester,
+  ) async {
+    final long = List.filled(30, 'word').join(' ');
+    final source = '| A | B |\n| - | - |\n| x | $long |';
+    await _pump(
+      tester,
+      MarkdownController(text: source),
+      style: _style.copyWith(fitTables: true),
+    );
+    final fitted = tester.getRect(find.byType(Table)).width;
+    // 400 wide, 10 of padding each side, 6 for the table's handles.
+    expect(fitted, closeTo(400 - 20 - 12, 2));
+  });
+
   // fork: a shorter empty line where the style has one (docs/fork.md).
   testWidgets('an empty line as high as its style says, others as before', (
     tester,

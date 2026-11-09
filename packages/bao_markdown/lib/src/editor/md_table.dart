@@ -1403,7 +1403,15 @@ class _MdTableState extends State<MdTable> implements MdTableEditing {
   // --- Building ---------------------------------------------------------------------
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => widget.style.fitTables
+      // fork: as wide as the page (MarkdownEditorStyle.fitTables).
+      ? LayoutBuilder(
+          builder: (context, constraints) =>
+              _build(context, constraints.maxWidth),
+        )
+      : _build(context, double.infinity);
+
+  Widget _build(BuildContext context, double maxWidth) {
     final (:rows, :aligns) = parseTable(widget.source);
     if (rows.isEmpty) return const SizedBox.shrink();
     final columns = rows.fold(
@@ -1438,6 +1446,57 @@ class _MdTableState extends State<MdTable> implements MdTableEditing {
     String valueOf(int r, int c) => c < rows[r].length ? rows[r][c] : '';
     TextAlign alignOf(int c) => c < aligns.length ? aligns[c] : TextAlign.left;
 
+    // fork: the columns' widths in [maxWidth] (fitTables): each its longest
+    // word's at least, its longest text's at most, as a browser's automatic
+    // layout shares a table's width; null where it is not to fit, or its
+    // words alone are wider.
+    List<double>? fitted() {
+      if (!style.fitTables || !maxWidth.isFinite) return null;
+      final scaler = MediaQuery.textScalerOf(context);
+      final pad = _padding.horizontal + 6;
+      final least = List.filled(columns, pad);
+      final most = List.filled(columns, pad);
+      double widthOf(String text, TextStyle textStyle) {
+        final painter = TextPainter(
+          text: TextSpan(text: text, style: textStyle),
+          textDirection: TextDirection.ltr,
+          textScaler: scaler,
+        )..layout();
+        final width = painter.maxIntrinsicWidth.ceilToDouble() + 1;
+        painter.dispose();
+        return width;
+      }
+
+      for (var r = 0; r < rows.length; r++) {
+        for (var c = 0; c < columns; c++) {
+          final plain = spanOf(
+            valueOf(r, c),
+            styleOf(r),
+          ).toPlainText(includeSemanticsLabels: false);
+          most[c] = math.max(most[c], widthOf(plain, styleOf(r)) + pad);
+          for (final word in plain.split(RegExp(r'\s+'))) {
+            if (word.isEmpty) continue;
+            least[c] = math.max(least[c], widthOf(word, styleOf(r)) + pad);
+          }
+        }
+      }
+      final width = maxWidth - 2 * _side;
+      final sumLeast = least.fold(0.0, (a, b) => a + b);
+      final sumMost = most.fold(0.0, (a, b) => a + b);
+      if (sumLeast > width) return null;
+      if (sumMost <= width) return [for (final m in most) m * width / sumMost];
+      final want = sumMost - sumLeast;
+      return [
+        for (var c = 0; c < columns; c++)
+          least[c] +
+              (want == 0
+                  ? 0
+                  : (width - sumLeast) * (most[c] - least[c]) / want),
+      ];
+    }
+
+    final fit = fitted();
+
     // Its scrollbar, over its bottom edge, while the mouse is over it.
     Widget scrolled(EdgeInsets padding, Widget child) {
       final embeds =
@@ -1467,6 +1526,13 @@ class _MdTableState extends State<MdTable> implements MdTableEditing {
           frame(
             Table(
               defaultColumnWidth: const IntrinsicColumnWidth(),
+              // fork: fitted to the page (fitTables).
+              columnWidths: fit == null
+                  ? null
+                  : {
+                      for (var c = 0; c < columns; c++)
+                        c: FixedColumnWidth(fit[c]),
+                    },
               border: TableBorder.symmetric(inside: line),
               children: [
                 for (var r = 0; r < rows.length; r++)
@@ -1511,6 +1577,8 @@ class _MdTableState extends State<MdTable> implements MdTableEditing {
     for (var c = 0; c < columns; c++) {
       widths[c] = (widths[c] + _padding.horizontal + 6).clamp(80.0, 360.0);
     }
+    // fork: fitted to the page (fitTables).
+    if (fit != null) widths.setAll(0, fit);
     _widths = widths;
 
     Widget cellOf(int r, int c) {

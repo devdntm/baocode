@@ -100,7 +100,7 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/kernel/claude_code/claude_code_translator.dart` | `PlanWritten` и при повторном чтении истории (`replayed: replaying`) |
 | `lib/ide/markdown/markdown_preview.dart` | `PlanPreview.footer` (задачи плана под текстом) и `PlanPreview.frontMatter` (у плана — только `overview`) |
 | `packages/bao_markdown/lib/src/editor/md_editor.dart` | параметр `footer`: виджет после строк в той же прокрутке |
-| `packages/bao_markdown/lib/src/editor/md_style.dart`, `md_display.dart`, `md_editor.dart` | `MarkdownEditorStyle`: `blank` (пустая строка), `codePadding` (отступы у кода), `bullet`, `listGap`/`itemGap` (поля списков; `_gapOver`, поле `gap` в `_RowKey`) |
+| `packages/bao_markdown/lib/src/editor/md_style.dart`, `md_display.dart`, `md_editor.dart` | `MarkdownEditorStyle`: `blank` (пустая строка), `codePadding` (отступы у кода), `bullet`, `listGap`/`itemGap` (поля списков; `_gapOver`, поле `gap` в `_RowKey`), `fitTables` (`md_table.dart`: `build` → `_build` с шириной) |
 | `lib/ide/markdown/markdown_preview.dart`, `lib/stash/stash_editor.dart` | стиль редактора через `CursorType.markdown` |
 | `pubspec.yaml` | зависимости `yaml` (front matter плана) и `fork_scroll_momentum` (инерция трекпада); ассеты `tool/claude_context/bao_index.js` и `tool/cursor_import/cursor_memsearch_import.py` |
 | `lib/main.dart` | `ChatLook.follow` (`chat.look`), `ScrollMomentum.follow` (`workbench.scroll.momentum`), `gestureSettings` окна (порог трекпада) |
@@ -295,6 +295,15 @@ CSS самого Cursor (`/Applications/Cursor.app/.../workbench.*.css`, `.rende
   неразрывные пробелы только для показа), маркер списка крупнее (`bullet`),
   10 pt над списком сразу после абзаца и под ним, 2 pt между пунктами
   (`listGap`, `itemGap`), отступ уровня 20.
+- **Как у Cursor в цвете текста:** заголовки, жирный, шапка таблицы, маркеры
+  списков; маркер — крупный кружок; пункты «свободного» списка (с пустыми
+  строками между ними) через 10 pt.
+- **Таблицы** во всю ширину чата или страницы: колонки делят её по
+  содержимому, как авто-раскладка таблицы в браузере (у каждой не меньше её
+  самого длинного слова), текст переносится; вбок прокручивается, только если
+  не влезают слова ([`cursor_table.dart`](../lib/fork/cursor_table.dart);
+  в markdown — `MarkdownEditorStyle.fitTables`). Шапка без заливки, линии
+  бледные, радиус 10.
 - **Поле ввода** на строку ниже: текст сразу над кнопками. Режим (Agent, Ask,
   Plan) — круглая плашка цвета текста без рамки, надпись и иконка светлые
   ([`mode_pill.dart`](../lib/fork/mode_pill.dart), `ComposerPicker._buildPill`).
