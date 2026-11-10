@@ -1921,6 +1921,10 @@ class _SidebarState extends State<Sidebar>
             }
           : null,
       onCreate: project == null ? null : () => _create(project),
+      // fork: the project in the IDE, a button on its row (docs/fork.md).
+      onOpenIde: project == null
+          ? null
+          : () => _openInEditor(project, Editor.fastIde),
       // Dragged onto the panes, beside them; not in an agent's window,
       // which has its one conversation.
       dragNew: switch ((project, widget.drag)) {
@@ -2796,6 +2800,7 @@ class _GroupHeader extends StatelessWidget {
     this.statuses = const {},
     this.light = false,
     this.onCreate,
+    this.onOpenIde,
     this.dragNew,
     this.menu,
     this.dragged = false,
@@ -2826,6 +2831,9 @@ class _GroupHeader extends StatelessWidget {
   /// The only project's: its name, nothing to fold or count.
   final bool light;
   final VoidCallback? onCreate;
+
+  // fork: opens the project in the IDE; on the row while it is hovered.
+  final VoidCallback? onOpenIde;
 
   /// Dragged, [onCreate]'s button makes a new agent of the project to go
   /// beside the panes where it is let go (see [ChatNewDragSource]), not in
@@ -2944,6 +2952,17 @@ class _GroupHeader extends StatelessWidget {
                         fontSize: 11,
                       ),
                     ),
+                  ),
+                // fork: the project in the IDE, as its menu's Open in Fast
+                // Ide.
+                if (onOpenIde case final onOpenIde? when active)
+                  SidebarIconButton(
+                    icon: Editor.fastIde.icon,
+                    tooltip: context.l10n.workspaceOpenIn(
+                      Editor.fastIde.localizedPlatformLabel(context.l10n),
+                    ),
+                    size: 20,
+                    onTap: onOpenIde,
                   ),
                 if (active && menu != null)
                   SidebarIconButton(

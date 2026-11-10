@@ -116,7 +116,7 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/chat/composer/composer.dart` | `_minEditorHeight`: на строку ниже при `chat.look: cursor` |
 | `lib/chat/composer/composer_picker.dart` | `_buildPill`: режим — `CursorModePill` при `chat.look: cursor` |
 | `lib/chat/chat_screen.dart` | `_footUnder`: в IDE ветка и размер контекста под полем ввода; `RunCommandPanel` вместо `InteractionPanel` для вопроса approve-blocked |
-| `lib/sidebar/sidebar.dart` | параметр `topLeading`: виджет в начале верхнего ряда вместо пустого места (имя проекта в колонке чатов IDE) |
+| `lib/sidebar/sidebar.dart` | параметр `topLeading`: виджет в начале верхнего ряда вместо пустого места (имя проекта в колонке чатов IDE); `_GroupHeader.onOpenIde`: на строке проекта при наведении кнопка «Open in Fast Ide» (`Editor.fastIde`) перед «…» и «+» |
 | `lib/keybindings/default_keybindings.dart` | `fork.switchProject` в каталоге команд; ⌃R → Switch Project при `fork.cursorLayout` (после Open Recent, поэтому в раскладке Cursor берётся он); ключ `fork.cursorLayout` среди известных |
 | `lib/chat/widgets/command_step.dart` | `CursorCommandCard` при `chat.look: cursor` |
 | `lib/kernel/claude_code/claude_code_kernel.dart` | `_requestContext`: размер контекста после каждого запроса модели (входные токены запроса), а не только в конце хода; разбивка по частям — от последнего полного подсчёта (`_fullContext`) |
