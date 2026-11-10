@@ -113,7 +113,16 @@ abstract final class ProjectSwitcher {
       ],
       if (onOpenFolder != null) ...[
         const IdeMenuSeparator(),
-        IdeMenuAction(l10n.menuOpenFolder, onSelected: onOpenFolder),
+        IdeMenuAction(
+          l10n.menuOpenFolder,
+          // In the icons' column, its label in line with the projects'.
+          icon: Icon(
+            Codicons.folderOpened,
+            size: 14,
+            color: AppColors.textFaint,
+          ),
+          onSelected: onOpenFolder,
+        ),
       ],
     ];
   }
@@ -146,13 +155,11 @@ abstract final class ProjectSwitcher {
       return IdeQuickPickItem(
         label: name.isEmpty ? project.path : name,
         description: [p.dirname(project.path), ?said].join('  ·  '),
-        icon: Icon(project.open ? Codicons.window : Codicons.folder),
-        badge: status == ThreadStatus.idle
-            ? null
-            : SizedBox(
-                width: 14,
-                child: Center(child: ThreadStatusMark(status)),
-              ),
+        // Its agents' mark in the icon's column, as the sidebar has it: the
+        // label's badge would sit right against the name.
+        icon: status == ThreadStatus.idle
+            ? Icon(project.open ? Codicons.window : Codicons.folder)
+            : ThreadStatusMark(status),
         onAccept: () => onOpen(project.path),
       );
     }

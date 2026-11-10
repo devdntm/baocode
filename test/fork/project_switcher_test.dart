@@ -10,6 +10,7 @@ import 'package:baocode/ide/ide_workspace.dart';
 import 'package:baocode/ide/terminal/terminal_instance.dart';
 import 'package:baocode/keybindings/keybinding_service.dart';
 import 'package:baocode/settings/user_settings.dart';
+import 'package:baocode/workspace/thread_status_mark.dart';
 import 'package:baocode/workspace/workspace.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -78,8 +79,10 @@ void main() {
     );
     final b = entries[1] as IdeQuickPickItem;
     expect(b.description, contains('/p'));
-    expect(b.badge, isNotNull);
-    expect((entries[3] as IdeQuickPickItem).badge, isNull);
+    // The agents' mark in the icon's place, not against the name.
+    expect(b.badge, isNull);
+    expect(b.icon, isA<ThreadStatusMark>());
+    expect((entries[3] as IdeQuickPickItem).icon, isA<Icon>());
     pick.onDidAccept!(b);
     expect(opened, ['/p/b']);
   });
