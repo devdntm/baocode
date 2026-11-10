@@ -2,7 +2,8 @@
 // (`.cursor/rules/*.mdc`, `.cursorrules`) as Claude Code's
 // (`.claude/rules/*.md`), its MCP servers (`.cursor/mcp.json`) into
 // `.mcp.json`, its agents' conversations (~/.cursor/projects/<project>/
-// agent-transcripts) into memsearch's memory, and Cursor's themes. None of
+// agent-transcripts, copied into the project) into memsearch's memory, and
+// Cursor's themes. None of
 // it overwrites what the project has.
 
 import 'dart:async';
@@ -577,6 +578,7 @@ class CursorImportJob extends ChangeNotifier {
 enum CursorHistoryStage {
   idle,
   counting,
+  copying,
   summarizing,
   assembling,
   indexing,
@@ -584,10 +586,12 @@ enum CursorHistoryStage {
   failed,
 }
 
-/// Cursor's conversations of a project into memsearch's memory: each turn
-/// told in short by the model memsearch's own hook uses (paid, and long:
-/// [count] first), laid out in its daily journals, indexed. Kept by the
-/// project, to be followed again.
+/// Cursor's conversations of a project into memsearch's memory: copied
+/// into the project (`.memsearch/cursor-transcripts`, what the journals
+/// link), each turn not in the journals yet told in short by the model
+/// memsearch's own hook uses (paid, and long: [count] first), added to its
+/// daily journals, indexed. Run again, it adds only what is new. Kept by
+/// the project, to be followed again.
 class CursorHistoryImport extends ChangeNotifier {
   CursorHistoryImport._(this.root, this.transcripts);
 
@@ -614,6 +618,7 @@ class CursorHistoryImport extends ChangeNotifier {
 
   bool get running => switch (_stage) {
     CursorHistoryStage.counting ||
+    CursorHistoryStage.copying ||
     CursorHistoryStage.summarizing ||
     CursorHistoryStage.assembling ||
     CursorHistoryStage.indexing => true,
@@ -626,13 +631,18 @@ class CursorHistoryImport extends ChangeNotifier {
 
   String get _memory => p.join(root, '.memsearch', 'memory');
   String get _cache => p.join(root, '.memsearch', 'cursor-import-cache');
+  String get _copy => p.join(root, '.memsearch', 'cursor-transcripts');
+
+  /// Where the script reads, keeps and writes: Cursor's folder, its copy,
+  /// the summaries, the journals.
+  List<String> get _dirs => [transcripts, _copy, _cache, _memory];
 
   /// How many turns are still to be told in short.
   Future<void> count() async {
     if (running) return;
     _set(CursorHistoryStage.counting);
     try {
-      final lines = await _python(['count', transcripts, _cache]);
+      final lines = await _python(['count', ..._dirs]);
       _total = int.tryParse(lines.lastOrNull?.split(' ').first ?? '');
       _set(CursorHistoryStage.idle);
     } on Object catch (error) {
@@ -640,16 +650,19 @@ class CursorHistoryImport extends ChangeNotifier {
     }
   }
 
-  /// Tells the turns in short, lays them out, indexes the memory.
+  /// Copies the conversations, tells the new turns in short, adds them to
+  /// the journals, indexes the memory.
   Future<void> run() async {
     if (running) return;
     _done = 0;
     _failed = 0;
     _error = null;
-    _set(CursorHistoryStage.summarizing);
+    _set(CursorHistoryStage.copying);
     try {
+      await _python(['sync', transcripts, _copy]);
+      _set(CursorHistoryStage.summarizing);
       await _python(
-        ['summarize', transcripts, _cache, '--jobs', '4'],
+        ['summarize', ..._dirs, '--jobs', '4'],
         onLine: (line) {
           final match = RegExp(
             r'^progress (\d+)/(\d+) \(failed (\d+)\)',
@@ -662,8 +675,7 @@ class CursorHistoryImport extends ChangeNotifier {
         },
       );
       _set(CursorHistoryStage.assembling);
-      await Directory(_memory).create(recursive: true);
-      await _python(['assemble', transcripts, _cache, _memory]);
+      await _python(['assemble', ..._dirs]);
       _set(CursorHistoryStage.indexing);
       await _index();
       _set(CursorHistoryStage.done);

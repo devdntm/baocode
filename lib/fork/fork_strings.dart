@@ -181,23 +181,32 @@ class ForkStrings {
     '对话：$sessions 个 → memsearch 记忆',
   );
   String cursorImportHistoryCost(int? turns) => _t(
-    turns == null
-        ? 'Counting the turns to summarize…'
-        : '$turns turns to summarize, each a call of Claude Haiku: paid, '
-              'and minutes long.',
-    turns == null
-        ? '正在统计需要总结的轮次…'
-        : '需要总结 $turns 轮，每轮调用一次 Claude Haiku：需付费，耗时数分钟。',
+    switch (turns) {
+      null => 'Counting the turns to summarize…',
+      0 => 'Every turn is in the memory already: only new ones are added.',
+      _ =>
+        '$turns new turns to summarize, each a call of Claude Haiku: paid, '
+            'and minutes long. The conversations are copied into '
+            '.memsearch/cursor-transcripts, which the memory links.',
+    },
+    switch (turns) {
+      null => '正在统计需要总结的轮次…',
+      0 => '所有轮次都已在记忆中：只会添加新的轮次。',
+      _ =>
+        '需要总结 $turns 个新轮次，每轮调用一次 Claude Haiku：需付费，耗时数分钟。'
+            '对话会复制到 .memsearch/cursor-transcripts，记忆链接到那里。',
+    },
   );
   String get cursorImportHistoryDone => _t(
-    'Imported before: days that have Cursor\'s turns already are kept.',
-    '之前已导入：已含 Cursor 记录的日期会保留。',
+    'Imported before: only the turns not in the memory yet are added.',
+    '之前已导入：只添加尚未在记忆中的轮次。',
   );
   String get cursorImportHistoryUnavailable =>
       _t('Needs the memsearch plugin and its CLI.', '需要 memsearch 插件及其命令行工具。');
   String cursorImportHistoryProgress(String stage, int done, int? total) =>
       _t('$stage: $done/${total ?? '?'}', '$stage：$done/${total ?? '?'}');
   String cursorImportStage(String stage) => switch (stage) {
+    'copying' => _t('Copying the conversations', '正在复制对话'),
     'summarizing' => _t('Summarizing', '正在总结'),
     'assembling' => _t('Writing the journals', '正在写入日志'),
     'indexing' => _t('Indexing the memory', '正在索引记忆'),
