@@ -170,6 +170,7 @@ import 'remote/port_forwards.dart';
 // fork: the browser's page (docs/fork.md).
 import 'fork/browser/browser_contribution.dart';
 import 'fork/browser/fork_browser.dart';
+import 'fork/fork_strings.dart';
 import 'fork/project_switcher.dart';
 
 /// The window: the agents sidebar on the left, the selected agent's chat
@@ -2365,21 +2366,53 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   void _showProjectSwitcher() {
     final ide = _ide;
     if (ide == null) return;
-    final open = [
-      if (_windows case final windows? when _multi)
-        for (final window in windows.windows)
-          if (window.isIde && window.folder != null) window.folder!,
-    ];
     ide.showQuickPick(
       ProjectSwitcher.pick(
         context,
-        projects: ProjectSwitcher.order(
-          current: _ideFolder == _noFolder ? null : _ideFolder,
-          open: open,
-          recent: _workspace.recentFolders,
-        ),
+        projects: _switcherProjects(),
         statusOf: (path) => ProjectSwitcher.statusIn(_workspace, path),
         onOpen: (folder) => _openIdeFolder(folder, held: _newWindowHeld),
+      ),
+    );
+  }
+
+  /// fork: the projects Switch Project lists, but the IDE's own.
+  List<({String path, bool open})> _switcherProjects() => ProjectSwitcher.order(
+    current: _ideFolder == _noFolder ? null : _ideFolder,
+    open: [
+      if (_windows case final windows? when _multi)
+        for (final window in windows.windows)
+          if (window.isIde && window.folder != null) window.folder!,
+    ],
+    recent: _workspace.recentFolders,
+  );
+
+  /// fork: the project's name over its chats in Cursor's layout, its
+  /// dropdown of the others under it.
+  Widget _projectSwitchButton(String path) {
+    final name = _workspace.projectAt(path).name;
+    return ProjectSwitchButton(
+      name: name,
+      tooltip: KeybindingService.instance.titleWithKeybinding(
+        context.fork.projectSwitcherTooltip(name),
+        ProjectSwitcher.commandId,
+      ),
+      onPressed: (anchor) => unawaited(
+        showIdeMenu(
+          context,
+          anchor: anchor,
+          speedSearch: true,
+          entries: ProjectSwitcher.menu(
+            context,
+            current: path,
+            projects: _switcherProjects(),
+            statusOf: (folder) => ProjectSwitcher.statusIn(_workspace, folder),
+            onOpen: (folder) => _openIdeFolder(folder, held: _newWindowHeld),
+            onOpenFolder: WindowControls.canPickDirectory
+                ? () => unawaited(_pickIdeFolder())
+                : null,
+          ),
+        ),
       ),
     );
   }
@@ -3066,6 +3099,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       onOpenSettings: () => unawaited(openSettings()),
       updates: widget.settings?.updates?.service,
       onUpdate: _restartToUpdate,
+      // fork: the project and its dropdown, over its chats.
+      projectSwitcher: _projectSwitchButton(path),
     );
   }
 

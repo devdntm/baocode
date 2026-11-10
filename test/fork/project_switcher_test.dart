@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:baocode/fork/project_switcher.dart';
 import 'package:baocode/ide/git/commit_message.dart';
 import 'package:baocode/ide/ide_commands.dart';
+import 'package:baocode/ide/ide_menu.dart';
 import 'package:baocode/ide/ide_quick_input.dart';
 import 'package:baocode/ide/ide_workbench.dart';
 import 'package:baocode/ide/ide_workspace.dart';
@@ -83,6 +84,76 @@ void main() {
     expect(opened, ['/p/b']);
   });
 
+  testWidgets('the dropdown: the current one ticked, open ones, recent '
+      'ones, Open Folder…; one picked is opened', (tester) async {
+    final opened = <String>[];
+    var folder = 0;
+    late List<IdeMenuEntry> entries;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            entries = ProjectSwitcher.menu(
+              context,
+              current: '/p/a',
+              projects: [
+                (path: '/p/b', open: true),
+                (path: '/p/d', open: false),
+              ],
+              statusOf: (_) => ThreadStatus.idle,
+              onOpen: opened.add,
+              onOpenFolder: () => folder++,
+            );
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+    expect(
+      [
+        for (final entry in entries)
+          switch (entry) {
+            IdeMenuSeparator() => '--',
+            IdeMenuAction(:final label, :final checked) =>
+              checked ? '✓ $label' : label,
+          },
+      ],
+      ['✓ a', '--', 'b', '--', 'd', '--', 'Open Folder…'],
+    );
+    expect((entries.first as IdeMenuAction).onSelected, isNull);
+    expect((entries[2] as IdeMenuAction).keybinding, '/p');
+    (entries[4] as IdeMenuAction).onSelected!();
+    (entries.last as IdeMenuAction).onSelected!();
+    expect(opened, ['/p/d']);
+    expect(folder, 1);
+  });
+
+  testWidgets('the project\'s button: its name, and where it is when '
+      'pressed', (tester) async {
+    Rect? at;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: SizedBox(
+            width: 200,
+            child: ProjectSwitchButton(
+              name: 'customs_ai',
+              tooltip: 'switch',
+              onPressed: (rect) => at = rect,
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('customs_ai'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('fork.switchProject')));
+    expect(at, isNotNull);
+    expect(
+      at,
+      tester.getRect(find.byKey(const ValueKey('fork.switchProject'))),
+    );
+  });
+
   group('in the IDE', () {
     UserSettings settingsWith(String json) {
       final temp = Directory.systemTemp.createTempSync('baocode-switcher');
@@ -153,24 +224,12 @@ void main() {
       await tester.pump();
     }
 
-    testWidgets('Cursor\'s layout: the project\'s button opens it, and ⌃R', (
-      tester,
-    ) async {
+    testWidgets('Cursor\'s layout: ⌃R opens it; the title bar is as it '
+        'was, the project\'s name over its chats instead', (tester) async {
       final ran = await pump(tester, layout: 'cursor');
-      final button = find.byKey(const ValueKey('fork.switchProject'));
-      expect(button, findsOneWidget);
-      expect(
-        find.descendant(
-          of: button,
-          matching: find.text(Project.at(testRoot).name),
-        ),
-        findsOneWidget,
-      );
-      await tester.tap(button);
-      await tester.pump();
-      expect(ran, [ProjectSwitcher.commandId]);
+      expect(find.byKey(const ValueKey('fork.switchProject')), findsNothing);
       await controlR(tester);
-      expect(ran, [ProjectSwitcher.commandId, ProjectSwitcher.commandId]);
+      expect(ran, [ProjectSwitcher.commandId]);
     });
 
     testWidgets('VS Code\'s: no button, ⌃R is Open Recent', (tester) async {

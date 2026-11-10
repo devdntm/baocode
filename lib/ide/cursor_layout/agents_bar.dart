@@ -31,6 +31,7 @@ class IdeAgentsBar extends StatelessWidget {
     this.updates,
     this.onUpdate,
     this.setup,
+    this.projectSwitcher,
   });
 
   final Workspace workspace;
@@ -57,6 +58,10 @@ class IdeAgentsBar extends StatelessWidget {
   final VoidCallback? onUpdate;
   final Widget? setup;
 
+  /// Over the chats: the project's name, its dropdown of the others
+  /// (lib/fork/project_switcher.dart).
+  final Widget? projectSwitcher;
+
   @override
   Widget build(BuildContext context) {
     final cursor = WorkbenchScope.maybeOf(context)?.find<CursorLayoutService>();
@@ -67,6 +72,7 @@ class IdeAgentsBar extends StatelessWidget {
         workspace: workspace,
         project: project,
         grouping: SidebarGrouping.recent,
+        topLeading: projectSwitcher,
         surface: themeColors['sideBar.background'],
         current: workspace.ideChat(folder),
         onSelect: onOpen,

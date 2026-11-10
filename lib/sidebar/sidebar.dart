@@ -212,6 +212,7 @@ class Sidebar extends StatefulWidget {
     this.atRight = false,
     this.project,
     this.grouping,
+    this.topLeading,
   });
 
   // fork: the IDE's list of its project's chats (lib/ide/cursor_layout/).
@@ -221,6 +222,10 @@ class Sidebar extends StatefulWidget {
 
   /// Grouped so, whatever the workspace's grouping: no By … menu.
   final SidebarGrouping? grouping;
+
+  /// At the start of the row over it, where the window has room: the IDE's
+  /// project and its dropdown (lib/fork/project_switcher.dart).
+  final Widget? topLeading;
 
   /// Under it: [AppColors.sidebarSurface] by default; none where the
   /// window's own color is under it already.
@@ -1191,7 +1196,13 @@ class _SidebarState extends State<Sidebar>
         child: Row(
           textDirection: right ? TextDirection.rtl : TextDirection.ltr,
           children: [
-            const Spacer(),
+            // fork: the IDE's project, where Cursor's layout lists its chats.
+            if (widget.topLeading case final leading?) ...[
+              const SizedBox(width: 8),
+              Expanded(child: leading),
+              const SizedBox(width: 4),
+            ] else
+              const Spacer(),
             SidebarIconButton(
               icon: right
                   ? Codicons.layoutSidebarRight
