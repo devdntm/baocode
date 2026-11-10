@@ -137,25 +137,23 @@ class _CursorWorkbenchGridState extends State<CursorWorkbenchGrid> {
   /// The chat, which keeps its state as it moves to the editor's place,
   /// maximized, and back: its tabs over its card. Beside the editor it goes
   /// down to the window's foot, its row there in the status bar's: its
-  /// branch and how full its context is, as a chat's window has them
-  /// (WorkbenchGrid's `_chatPart`). In the editor's place, no row: the
+  /// branch at the start and how full its context is at the end, as a
+  /// chat's window has them. Nothing of the status bar's is in that row,
+  /// so no IslandFootTrailing (which would keep the row to its own width,
+  /// the meter right after the branch). In the editor's place, no row: the
   /// status bar is under it.
   Widget _chatPart() => Padding(
     key: _chatKey,
     padding: EdgeInsets.symmetric(horizontal: WorkbenchStyle.gap / 2),
-    // The branch and the meter side by side, as in a chat's window.
-    child: IslandFootTrailing(
-      trailing: null,
-      child: HeadedIsland(
-        header: IdeTabStrip.height,
-        footer: _layout.editorVisible ? Islands.belowHeight : 0,
-        color: AppColors.code,
-        // Beside the editor, its line on its right.
-        border: _layout.editorVisible ? Border(right: SideBarPart.line) : null,
-        footerLine: IdeStatusBar.line,
-        footerColor: themeColors.get('statusBar.background'),
-        child: Focus(focusNode: _service.chatFocus, child: widget.options.chat),
-      ),
+    child: HeadedIsland(
+      header: IdeTabStrip.height,
+      footer: _layout.editorVisible ? Islands.belowHeight : 0,
+      color: AppColors.code,
+      // Beside the editor, its line on its right.
+      border: _layout.editorVisible ? Border(right: SideBarPart.line) : null,
+      footerLine: IdeStatusBar.line,
+      footerColor: themeColors.get('statusBar.background'),
+      child: Focus(focusNode: _service.chatFocus, child: widget.options.chat),
     ),
   );
 

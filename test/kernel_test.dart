@@ -331,8 +331,9 @@ void main() {
         )
         ..translate(user('typed', {}));
       expect(
-        [for (var i = 0; i < transcript.length; i++) transcript.itemAt(i)]
-            .whereType<UserMessageItem>(),
+        [
+          for (var i = 0; i < transcript.length; i++) transcript.itemAt(i),
+        ].whereType<UserMessageItem>(),
         hasLength(1),
       );
     });
@@ -1376,9 +1377,9 @@ void main() {
         )..replaying = replay;
         messages.forEach(translator.translate);
         // Only the live run knows a background command's outcome.
-        return shown(transcript)
-            .map((line) => line.replaceAll(' (background)', ''))
-            .toList();
+        return shown(
+          transcript,
+        ).map((line) => line.replaceAll(' (background)', '')).toList();
       }
 
       final kept = await ClaudeStorage.read(
@@ -1428,24 +1429,22 @@ void main() {
         translator.translate(message);
       }
       translator.endReplay();
-      Duration? worked(String id) => (transcript.itemAt(
-        transcript.indexOf(id)!,
-      ) as UserMessageItem).worked;
+      Duration? worked(String id) =>
+          (transcript.itemAt(transcript.indexOf(id)!) as UserMessageItem)
+              .worked;
       expect(worked('p1'), const Duration(seconds: 45));
       // Stopped: to where it was, and said so.
       expect(worked('p2'), const Duration(seconds: 3));
       expect(
-        (transcript.itemAt(
-          transcript.indexOf('p2')!,
-        ) as UserMessageItem).stopped,
+        (transcript.itemAt(transcript.indexOf('p2')!) as UserMessageItem)
+            .stopped,
         isTrue,
       );
       expect(worked('p3'), const Duration(seconds: 3));
       // When each was sent, as kept: for a chat app's times.
       expect(
-        (transcript.itemAt(
-          transcript.indexOf('p2')!,
-        ) as UserMessageItem).sentAt,
+        (transcript.itemAt(transcript.indexOf('p2')!) as UserMessageItem)
+            .sentAt,
         DateTime.utc(2026, 10, 1, 10, 0, 50).toLocal(),
       );
     });
@@ -1712,9 +1711,9 @@ void main() {
           'duration_api_ms': 999999,
         });
         await pumpEventQueue();
-        final usage = (transcript.itemAt(
-          transcript.indexOf('u2')!,
-        ) as UserMessageItem).usage!;
+        final usage =
+            (transcript.itemAt(transcript.indexOf('u2')!) as UserMessageItem)
+                .usage!;
         expect(usage.inputTokens, 2020);
         expect(usage.outputTokens, 100);
         expect(usage.costUsd, closeTo(0.25, 1e-9));
@@ -1770,9 +1769,9 @@ void main() {
         'usage': {'input_tokens': '10', 'output_tokens': '40'},
       });
       await pumpEventQueue();
-      final usage = (transcript.itemAt(
-        transcript.indexOf('u1')!,
-      ) as UserMessageItem).usage!;
+      final usage =
+          (transcript.itemAt(transcript.indexOf('u1')!) as UserMessageItem)
+              .usage!;
       expect(usage.inputTokens, 1010);
       expect(usage.outputTokens, 40);
       expect([
@@ -1841,70 +1840,73 @@ void main() {
       kernel.dispose();
     });
 
-    test("one of the app's tools asks the user itself: on the "
-        "conversation, answered to it; the CLI's leave not asked for it", () async {
-      ClaudeSdkTools.register(
-        ClaudeSdkTool(
-          name: 'ask_me',
-          description: 'Asks.',
-          inputSchema: const {'type': 'object'},
-          asksItself: true,
-          run: (input, call) async =>
-              '${await call.ask!(const ApprovalRequest(id: '', title: 'Run it here?', toolName: 'mcp__baocode__ask_me', alwaysAllowLabel: 'Always for this host'))}',
-        ),
-      );
-      addTearDown(() => ClaudeSdkTools.unregister('ask_me'));
-      final cli = FakeCli();
-      final (:kernel, :transcript, events: _) = claude(cli);
-      kernel.send(const KernelTurn(id: 'u1', text: 'go'));
-      await pumpEventQueue();
-      cli.push({
-        'type': 'control_request',
-        'request_id': 'p1',
-        'request': {
-          'subtype': 'can_use_tool',
-          'tool_name': 'mcp__baocode__ask_me',
-          'input': <String, Object?>{},
-        },
-      });
-      await pumpEventQueue();
-      expect(cli.responses.last, {
-        'behavior': 'allow',
-        'updatedInput': <String, Object?>{},
-      });
-      expect(transcript.pendingInteraction, isNull);
-
-      cli.push({
-        'type': 'control_request',
-        'request_id': 'm1',
-        'request': {
-          'subtype': 'mcp_message',
-          'server_name': 'baocode',
-          'message': {
-            'jsonrpc': '2.0',
-            'id': 5,
-            'method': 'tools/call',
-            'params': {'name': 'ask_me', 'arguments': <String, Object?>{}},
+    test(
+      "one of the app's tools asks the user itself: on the "
+      "conversation, answered to it; the CLI's leave not asked for it",
+      () async {
+        ClaudeSdkTools.register(
+          ClaudeSdkTool(
+            name: 'ask_me',
+            description: 'Asks.',
+            inputSchema: const {'type': 'object'},
+            asksItself: true,
+            run: (input, call) async =>
+                '${await call.ask!(const ApprovalRequest(id: '', title: 'Run it here?', toolName: 'mcp__baocode__ask_me', alwaysAllowLabel: 'Always for this host'))}',
+          ),
+        );
+        addTearDown(() => ClaudeSdkTools.unregister('ask_me'));
+        final cli = FakeCli();
+        final (:kernel, :transcript, events: _) = claude(cli);
+        kernel.send(const KernelTurn(id: 'u1', text: 'go'));
+        await pumpEventQueue();
+        cli.push({
+          'type': 'control_request',
+          'request_id': 'p1',
+          'request': {
+            'subtype': 'can_use_tool',
+            'tool_name': 'mcp__baocode__ask_me',
+            'input': <String, Object?>{},
           },
-        },
-      });
-      await pumpEventQueue();
-      final request = transcript.pendingInteraction as ApprovalRequest;
-      expect(request.title, 'Run it here?');
-      expect(request.alwaysAllowLabel, 'Always for this host');
-      kernel.answer(
-        request.id,
-        const ApprovalAnswer(ApprovalDecision.allowAlways),
-      );
-      await pumpEventQueue();
-      expect(transcript.pendingInteraction, isNull);
-      final mcp = cli.responses.last['mcp_response']! as Map;
-      expect(((mcp['result'] as Map)['content'] as List).single, {
-        'type': 'text',
-        'text': 'ApprovalDecision.allowAlways',
-      });
-      kernel.dispose();
-    });
+        });
+        await pumpEventQueue();
+        expect(cli.responses.last, {
+          'behavior': 'allow',
+          'updatedInput': <String, Object?>{},
+        });
+        expect(transcript.pendingInteraction, isNull);
+
+        cli.push({
+          'type': 'control_request',
+          'request_id': 'm1',
+          'request': {
+            'subtype': 'mcp_message',
+            'server_name': 'baocode',
+            'message': {
+              'jsonrpc': '2.0',
+              'id': 5,
+              'method': 'tools/call',
+              'params': {'name': 'ask_me', 'arguments': <String, Object?>{}},
+            },
+          },
+        });
+        await pumpEventQueue();
+        final request = transcript.pendingInteraction as ApprovalRequest;
+        expect(request.title, 'Run it here?');
+        expect(request.alwaysAllowLabel, 'Always for this host');
+        kernel.answer(
+          request.id,
+          const ApprovalAnswer(ApprovalDecision.allowAlways),
+        );
+        await pumpEventQueue();
+        expect(transcript.pendingInteraction, isNull);
+        final mcp = cli.responses.last['mcp_response']! as Map;
+        expect(((mcp['result'] as Map)['content'] as List).single, {
+          'type': 'text',
+          'text': 'ApprovalDecision.allowAlways',
+        });
+        kernel.dispose();
+      },
+    );
 
     test('a tool asks leave; always allowing sends its rules', () async {
       final cli = FakeCli();
@@ -1912,8 +1914,9 @@ void main() {
       kernel.send(const KernelTurn(id: 'u1', text: 'write it'));
       await pumpEventQueue();
       cli.push(
-        recorded('permission')
-            .firstWhere((m) => m['type'] == 'control_request'),
+        recorded(
+          'permission',
+        ).firstWhere((m) => m['type'] == 'control_request'),
       );
       await pumpEventQueue();
       final request = transcript.pendingInteraction as ApprovalRequest;
@@ -3619,8 +3622,9 @@ void main() {
       ];
       int indexOf(String text) => [
         for (var i = 0; i < session.itemCount; i++)
-          if (session.itemAt(i) case UserMessageItem(text: final said)
-              when said == text)
+          if (session.itemAt(i) case UserMessageItem(
+            text: final said,
+          ) when said == text)
             i,
       ].single;
       final two = indexOf('two');
@@ -3670,6 +3674,42 @@ void main() {
         usage.segments.map((s) => s.kind).toSet(),
         containsAll([ContextKind.used, ContextKind.free, ContextKind.buffer]),
       );
+      kernel.dispose();
+    });
+
+    test('the context\'s size with each request of a turn, its parts as '
+        'last counted in full', () async {
+      final cli = FakeCli();
+      final (:kernel, :transcript, events: _) = claude(cli);
+      kernel.send(const KernelTurn(id: 'u1', text: 'hi'));
+      await pumpEventQueue();
+      final parts = transcript.usage?.segments;
+      Map<String, Object?> request(String id, int read) => {
+        'type': 'assistant',
+        'message': {
+          'id': id,
+          'model': 'claude-opus-4-6',
+          'role': 'assistant',
+          'content': [
+            {'type': 'text', 'text': 'working'},
+          ],
+          'usage': {
+            'input_tokens': 10,
+            'cache_creation_input_tokens': 200,
+            'cache_read_input_tokens': read,
+            'output_tokens': 5,
+          },
+        },
+        'parent_tool_use_id': null,
+        'session_id': 's',
+      };
+      cli.push(request('msg_1', 50000));
+      await pumpEventQueue();
+      expect(transcript.usage!.used, 50210);
+      cli.push(request('msg_2', 90000));
+      await pumpEventQueue();
+      expect(transcript.usage!.used, 90210);
+      expect(transcript.usage!.segments, same(parts));
       kernel.dispose();
     });
 
@@ -6194,10 +6234,14 @@ exec /bin/sh -c "\$command"
       expect((await ClaudeEnvironment.of())['ASKED'], '-i');
     }, skip: Platform.isWindows);
 
-    test('is asked as a login shell alone when interactive fails', () async {
-      shell('[ "\$ASKED" = -i ] && exit 1');
-      expect((await ClaudeEnvironment.of())['ASKED'], '-l');
-    }, skip: Platform.isWindows);
+    test(
+      'is asked as a login shell alone when interactive fails',
+      () async {
+        shell('[ "\$ASKED" = -i ] && exit 1');
+        expect((await ClaudeEnvironment.of())['ASKED'], '-l');
+      },
+      skip: Platform.isWindows,
+    );
 
     test('is read up to its end, not up to what an rc file left running '
         'with its output', () async {
@@ -6737,8 +6781,9 @@ exec /usr/bin/env "\$@"
       File('${dir(from)}/mine/subagents/a.jsonl').createSync(recursive: true);
       File('${dir(from)}/memory/MEMORY.md').createSync(recursive: true);
 
-      final moved = await ClaudeStorage(configDir: config)
-          .moveSessions(from, to);
+      final moved = await ClaudeStorage(
+        configDir: config,
+      ).moveSessions(from, to);
 
       expect(moved, 1);
       final file = File('${dir(to)}/mine.jsonl');

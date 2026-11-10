@@ -42,27 +42,28 @@ import 'usage_limit.dart';
 
 /// Reads a kept session: its conversation lines, oldest first, along the
 /// branch the session ended on.
-typedef ClaudeHistoryReader = Future<List<Map<String, Object?>>> Function(
-  SessionRecord session,
-);
+typedef ClaudeHistoryReader =
+    Future<List<Map<String, Object?>>> Function(SessionRecord session);
 
 /// Reads some of a kept session: its last [turns], or the [turns] before
 /// the line [before].
-typedef ClaudeHistoryPager = Future<ClaudeHistoryPage> Function(
-  SessionRecord session, {
-  required int turns,
-  String? before,
-});
+typedef ClaudeHistoryPager =
+    Future<ClaudeHistoryPage> Function(
+      SessionRecord session, {
+      required int turns,
+      String? before,
+    });
 
 /// Copies the session [id], run in [cwd], into a new one, [into] (see
 /// ClaudeSessions.fork): the new session's file.
-typedef ClaudeSessionForker = Future<String> Function(
-  String cwd,
-  String id,
-  String into, {
-  String? before,
-  String? title,
-});
+typedef ClaudeSessionForker =
+    Future<String> Function(
+      String cwd,
+      String id,
+      String into, {
+      String? before,
+      String? title,
+    });
 
 /// The setting Claude Code runs with that keeps it from asking for the
 /// plan usage, if one does.
@@ -70,17 +71,13 @@ typedef ClaudeUsageSwitch = Future<String?> Function();
 
 /// [executable], run in [cwd], refused an option BaoCode starts Claude
 /// Code with: whether another, newer, may be started instead.
-typedef ClaudeTooOldHandler = Future<bool> Function(
-  String cwd,
-  String executable,
-);
+typedef ClaudeTooOldHandler =
+    Future<bool> Function(String cwd, String executable);
 
 /// The environment of a session on [provider] that asks for [model] (see
 /// [providerLaunchEnvironment]).
-typedef ProviderEnvironment = Future<Map<String, String>> Function(
-  ModelProvider provider,
-  String model,
-);
+typedef ProviderEnvironment =
+    Future<Map<String, String>> Function(ModelProvider provider, String model);
 
 /// Adapts Claude Code, run as `claude -p` over stream-json, to
 /// [AgentKernel].
@@ -1378,9 +1375,9 @@ class ClaudeCodeKernel
 
   /// A random UUID (v4), as Claude Code names its sessions.
   static String _newSessionId() {
-    String hex(int length) =>
-        [for (var i = 0; i < length; i++) _random.nextInt(16).toRadixString(16)]
-            .join();
+    String hex(int length) => [
+      for (var i = 0; i < length; i++) _random.nextInt(16).toRadixString(16),
+    ].join();
     final variant = (8 + _random.nextInt(4)).toRadixString(16);
     return '${hex(8)}-${hex(4)}-4${hex(3)}-$variant${hex(3)}-${hex(12)}';
   }
@@ -1918,7 +1915,12 @@ class ClaudeCodeKernel
         );
         emitInfoChanged();
       case 'assistant':
-        if (_countRequest(message)) _reportStats();
+        if (_countRequest(message)) {
+          _reportStats();
+          // fork: the context's size with each request, not only as a turn
+          // ends (docs/fork.md).
+          _requestContext();
+        }
         if (message['error'] == 'rate_limit') {
           _limitSaid(message['message']);
           _accountsLimited();
@@ -2670,6 +2672,28 @@ class ClaudeCodeKernel
     unawaited(_refreshContext());
   }
 
+  /// The context as the CLI last counted it in full (its parts).
+  ContextUsage? _fullContext;
+
+  /// fork: what the request just sent held, as the context's size, its
+  /// parts as last counted in full: the meter keeps up within a turn, which
+  /// may be long, and is counted in full again as it ends.
+  void _requestContext() {
+    final tokens = _requests[_lastRequest];
+    if (tokens == null) return;
+    emit(
+      UsageReported(
+        nextSeq,
+        ContextUsage(
+          window: _contextWindow,
+          used: tokens.total,
+          segments: _fullContext?.segments ?? const [],
+          detail: _fullContext?.detail,
+        ),
+      ),
+    );
+  }
+
   Future<void> _refreshContext() async {
     final control = _control;
     if (control == null) return;
@@ -2684,16 +2708,17 @@ class ClaudeCodeKernel
       _contextReported = true;
       // No more than the window it compacts at (the CLI reports that as
       // raw too): the model holds at least that.
-      if ((usage['rawMaxTokens'], _reportedModel)
-          case (final int raw, final model?)
-          when raw > (_modelWindows[model] ?? 0)) {
+      if ((usage['rawMaxTokens'], _reportedModel) case (
+        final int raw,
+        final model?,
+      ) when raw > (_modelWindows[model] ?? 0)) {
         _modelWindows[model] = raw;
       }
       emitInfoChanged();
       emit(
         UsageReported(
           nextSeq,
-          ContextUsage(
+          _fullContext = ContextUsage(
             window: max,
             used: usage['totalTokens'] as int? ?? 0,
             segments: [
@@ -2789,11 +2814,9 @@ class ClaudeCodeKernel
   @override
   void emit(KernelEvent event) {
     super.emit(event);
-    if (event
-        case ItemUpserted(
-          item: ToolCallItem(kind: ToolKind.command, :final output?),
-        )
-        when output.isNotEmpty) {
+    if (event case ItemUpserted(
+      item: ToolCallItem(kind: ToolKind.command, :final output?),
+    ) when output.isNotEmpty) {
       if (_remoteHost case final host? when !RemoteLocation.isWsl(host)) {
         PortForwards.instance.notice(host, output);
       }

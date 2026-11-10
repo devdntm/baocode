@@ -117,6 +117,7 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/chat/composer/composer_picker.dart` | `_buildPill`: режим — `CursorModePill` при `chat.look: cursor` |
 | `lib/chat/chat_screen.dart` | `_footUnder`: в IDE ветка и размер контекста под полем ввода; `RunCommandPanel` вместо `InteractionPanel` для вопроса approve-blocked |
 | `lib/chat/widgets/command_step.dart` | `CursorCommandCard` при `chat.look: cursor` |
+| `lib/kernel/claude_code/claude_code_kernel.dart` | `_requestContext`: размер контекста после каждого запроса модели (входные токены запроса), а не только в конце хода; разбивка по частям — от последнего полного подсчёта (`_fullContext`) |
 | `lib/chat/chat_session.dart` | `ForkBrowser.agentInBrowser`/`turnEnded` в `_apply` (страница браузера открывается сама); `RestoresCheckpoints`: `canRestoreAt`, `restoreCheckpoint`, `revertFilesFrom`, `restoredAt` (в `send` — с места чекпоинта); `ChangesReverted` перечитывает ревью |
 | `lib/chat/chat_history_view.dart` | `CheckpointHover` под сообщением, бледные строки после чекпоинта, вопрос в `_submitEdit` |
 | `lib/chat/widgets/shell_highlight.dart` | `shellPrograms`: программы команды для заголовка карточки |

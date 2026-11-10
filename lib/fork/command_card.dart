@@ -54,6 +54,10 @@ class CursorCommandCard extends StatelessWidget {
 
   static const radius = 10.0;
 
+  /// Above and below it: steps follow one another with no gap, a row's
+  /// own height apart, and cards, which have none, would touch.
+  static const margin = 4.0;
+
   /// Its colors, the theme's text's as Cursor's card has them: the title
   /// at 60%, the programs, the icon and the output's last lines at 36%
   /// (measured on its screenshots), what it printed, open, at 55%.
@@ -81,6 +85,7 @@ class CursorCommandCard extends StatelessWidget {
     return HoverBuilder(
       cursor: onToggle == null ? MouseCursor.defer : SystemMouseCursors.click,
       builder: (context, hovered) => Container(
+        margin: const EdgeInsets.symmetric(vertical: margin),
         decoration: BoxDecoration(
           border: Border.all(color: AppColors.border),
           borderRadius: BorderRadius.circular(radius),
