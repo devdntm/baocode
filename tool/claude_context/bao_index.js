@@ -18,7 +18,7 @@
 //   {"event":"started"}         the server took index_codebase
 //   {"event":"progress", ...}   rows in Milvus, the run's own percentage
 //   {"event":"done", ...}       over: the index as it is then
-//   {"event":"error","message"}
+//   {"event":"error","message"}  failed, or no files found (and why)
 // Exit codes: 0 complete / done, 1 incomplete or an error, 2 the server
 // stopped before it was done.
 'use strict';
@@ -222,7 +222,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 /// What the server's own log says of its indexing run: its stderr's
 /// `[BACKGROUND-INDEX]` lines (claude-context-mcp's handlers.js).
 function followLog(child) {
-  const run = { percentage: null, phase: null, done: null, failed: null, last: [] };
+  const run = { percentage: null, phase: null, done: null, failed: null, files: null, last: [] };
   let buffer = '';
   child.stderr.on('data', (data) => {
     buffer += data.toString('utf8');
@@ -234,7 +234,9 @@ function followLog(child) {
       run.last.push(line);
       if (run.last.length > 20) run.last.shift();
       let match;
-      if ((match = line.match(/\[BACKGROUND-INDEX\] Progress: (.*?) - ([\d.]+)%/))) {
+      if ((match = line.match(/📁 Found (\d+) code files/))) {
+        run.files = Number(match[1]);
+      } else if ((match = line.match(/\[BACKGROUND-INDEX\] Progress: (.*?) - ([\d.]+)%/))) {
         run.phase = match[1];
         run.percentage = Number(match[2]);
       } else if ((match = line.match(/\[BACKGROUND-INDEX\] ✅ Indexing completed successfully! Files: (\d+), Chunks: (\d+)/))) {
@@ -247,6 +249,36 @@ function followLog(child) {
     }
   });
   return run;
+}
+
+/// Why the server found no files: an ignore file in the project's root
+/// that excludes all (`*`, `**`) and lists what to keep with `!`, as a
+/// .dockerignore may. claude-context reads every `.*ignore` there as a
+/// .gitignore, but not its `!` lines: such a file leaves nothing.
+function noFilesReason() {
+  let names = [];
+  try {
+    names = fs.readdirSync(codebase).filter((name) => name.startsWith('.') && name.endsWith('ignore'));
+  } catch {
+    // An unreadable folder: said as it is.
+  }
+  for (const name of names) {
+    let lines = [];
+    try {
+      lines = fs.readFileSync(path.join(codebase, name), 'utf8').split('\n').map((line) => line.trim());
+    } catch {
+      continue;
+    }
+    const all = lines.some((line) => ['*', '**', '/*', '/**', '**/*'].includes(line));
+    const kept = lines.some((line) => line.startsWith('!'));
+    if (all && kept) {
+      return `claude-context found no files to index: ${name} excludes everything ` +
+        `and keeps what it needs with "!" lines, which claude-context does not read ` +
+        `(it reads every .*ignore in the project's root as a .gitignore).`;
+    }
+  }
+  return 'claude-context found no files to index' +
+    (names.length ? ` (its ignore files: ${names.join(', ')})` : '');
 }
 
 /// The server started as Claude Code starts it, spoken to over stdio.
@@ -314,6 +346,11 @@ async function index(server, client) {
   let last = null;
   for (;;) {
     await sleep(1000);
+    if (run.files === 0) {
+      stop();
+      out('error', { message: noFilesReason() });
+      process.exit(1);
+    }
     if (run.done) break;
     if (run.failed) {
       stop();
