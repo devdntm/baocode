@@ -21,6 +21,7 @@ import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' show themeColors;
 import '../workspace/thread_status_mark.dart';
 import '../workspace/workspace.dart';
+import 'cursor_look.dart';
 import 'fork_strings.dart';
 
 abstract final class ProjectSwitcher {
@@ -258,12 +259,17 @@ class ProjectSwitchButton extends StatelessWidget {
                       style: TextStyle(
                         color: foreground,
                         fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                        // Regular, tracked as macOS sets it: Cursor's.
+                        letterSpacing: CursorType.tracking(13),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 2),
-                  Icon(Codicons.chevronDown, size: 14, color: foreground),
+                  const SizedBox(width: 3),
+                  Icon(
+                    Codicons.chevronDown,
+                    size: 12,
+                    color: AppColors.textFaint,
+                  ),
                 ],
               ),
             ),
