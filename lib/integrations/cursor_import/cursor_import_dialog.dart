@@ -19,6 +19,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
 import 'cursor_import.dart';
+import 'cursor_import_ui.dart' show cursorImportStageLabel;
 
 /// What the app gives the import: its themes, its keybindings' import.
 abstract final class CursorImport {
@@ -90,9 +91,9 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
     super.initState();
     final history = _historyImport;
     if (history != null && _historyAvailable) {
-      if (history.total == null && !history.running) {
-        unawaited(history.count());
-      }
+      // Counted anew each time: what a run before brought is not to tell
+      // again. Not while the dialog shows how a run went.
+      if (!history.running && !_progress) unawaited(history.count());
       _importedBefore = _hasCursorJournals();
     }
   }
@@ -516,7 +517,7 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
   /// The conversations' stage and a bar of the turns told so far.
   Widget _historyProgress(CursorHistoryImport history) {
     final fork = context.fork;
-    final stage = fork.cursorImportStage(history.stage.name);
+    final stage = _stageLabel(history);
     final summarizing = history.stage == CursorHistoryStage.summarizing;
     final total = history.total;
     return Padding(
@@ -549,15 +550,20 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
     );
   }
 
+  String _stageLabel(CursorHistoryImport history) =>
+      cursorImportStageLabel(context, history);
+
   Widget _historyNote(CursorHistoryImport history) {
     final fork = context.fork;
     if (!_historyAvailable) return _note(fork.cursorImportHistoryUnavailable);
-    if (history.stage != CursorHistoryStage.idle &&
-        history.stage != CursorHistoryStage.counting) {
+    // A run under way, or one that failed: how far it went. One done is
+    // counted anew, as what is left.
+    if (history.running && history.stage != CursorHistoryStage.counting ||
+        history.stage == CursorHistoryStage.failed) {
       return _note(
         [
           fork.cursorImportHistoryProgress(
-            fork.cursorImportStage(history.stage.name),
+            _stageLabel(history),
             history.done,
             history.total,
           ),

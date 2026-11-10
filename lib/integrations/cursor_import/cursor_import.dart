@@ -674,6 +674,13 @@ class CursorHistoryImport extends ChangeNotifier {
       await _python(
         ['summarize', ..._dirs, '--jobs', '4'],
         onLine: (line) {
+          // What this run has to tell: the count may be from before.
+          if (RegExp(r'^(\d+) turns to summarize').firstMatch(line)
+              case final todo?) {
+            _total = int.parse(todo[1]!);
+            notifyListeners();
+            return;
+          }
           final match = RegExp(
             r'^progress (\d+)/(\d+) \(failed (\d+)\)',
           ).firstMatch(line);
@@ -686,6 +693,7 @@ class CursorHistoryImport extends ChangeNotifier {
       );
       _set(CursorHistoryStage.assembling);
       await _python(['assemble', ..._dirs]);
+      _waitingForDatabase = false;
       _set(CursorHistoryStage.indexing);
       await _index();
       _set(CursorHistoryStage.done);
@@ -708,13 +716,41 @@ class CursorHistoryImport extends ChangeNotifier {
       final named = await Process.run('/bin/bash', [derive, root]);
       collection = '${named.stdout}'.trim();
     }
-    final result = await Process.run(memsearch, [
-      'index',
-      _memory,
-      if (collection.isNotEmpty) ...['--default-collection', collection],
-    ], workingDirectory: root);
-    if (result.exitCode != 0) throw StateError('${result.stderr}'.trim());
+    // Its database (Milvus Lite, one file) opens in one process at a time:
+    // while another has it (memsearch's hooks in a session of the project),
+    // tried again a while.
+    for (var attempt = 1; ; attempt++) {
+      final result = await Process.run(memsearch, [
+        'index',
+        _memory,
+        if (collection.isNotEmpty) ...['--default-collection', collection],
+      ], workingDirectory: root);
+      if (result.exitCode == 0) return;
+      final said = '${result.stderr}'.trim();
+      if (attempt < indexAttempts &&
+          said.contains('Open local milvus failed')) {
+        _waitingForDatabase = true;
+        notifyListeners();
+        await Future<void>.delayed(indexRetryDelay);
+        continue;
+      }
+      throw CursorImportFailure(
+        'memsearch index: '
+        '${const LineSplitter().convert(said).lastOrNull ?? 'exited with ${result.exitCode}'}',
+      );
+    }
   }
+
+  /// How often, and how far apart, `memsearch index` is tried while
+  /// another process has its database.
+  static int indexAttempts = 24;
+  static Duration indexRetryDelay = const Duration(seconds: 5);
+
+  /// Whether indexing waits for memsearch's database, which another
+  /// process has open.
+  bool get waitingForDatabase =>
+      _waitingForDatabase && _stage == CursorHistoryStage.indexing;
+  bool _waitingForDatabase = false;
 
   Future<List<String>> _python(
     List<String> args, {

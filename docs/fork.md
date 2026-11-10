@@ -257,7 +257,7 @@ tool/dev_app/build_dev_app.sh --skip-build # поставить то, что у�
 
 - **Помощник.**
   - `check` считает индекс прямо в Milvus и сверяет с merkle-снимком: чанки, файлы в индексе и в проекте, недостающие по папкам, статус из `mcp-codebase-snapshot.json`. `get_indexing_status` не вызывается: он врёт.
-  - `index [--force]` запускает сервер claude-context дочерним процессом с командой и окружением из `mcpServers`, просит `index_codebase` по MCP-stdio и держит его до честного `completed`.
+  - `index [--force]` запускает сервер claude-context дочерним процессом с командой и окружением из `mcpServers`, просит `index_codebase` по MCP-stdio и держит его, пока тот не закончит. Ход и конец помощник берёт из stderr своего сервера (`[BACKGROUND-INDEX] Progress: … %`, `✅ Indexing completed successfully!`, `Indexing failed for …`), а не из общего `mcp-codebase-snapshot.json`. Любой другой сервер claude-context при старте (чат Claude Code в проекте) пишет туда идущую индексацию как `indexfailed` («interrupted») с процентом прошлой попытки. Раньше помощник верил этому и обрывал свою исправную индексацию. На ответ «already indexed» без `--force` он не запускает индексацию, а только проверяет индекс.
   - `clear` вызывает `clear_index`.
 
   С `--json` каждая строка вывода — событие. Запускается через `node` сервера; процесс записан в `state/claude-context-processes.json`, так что после падения BaoCode его остаток будет завершён.
@@ -285,7 +285,7 @@ tool/dev_app/build_dev_app.sh --skip-build # поставить то, что у�
   - `sync` копирует `~/.cursor/projects/<проект>/agent-transcripts` в `.memsearch/cursor-transcripts` через `rsync -a` и ничего не удаляет. Сессии, которые Cursor удалил, остаются в копии. Метка `transcript:` в журнале ведёт на копию.
   - `summarize` пересказывает реплики Claude Haiku в кэш `.memsearch/cursor-import-cache`. Модель получает реплику пользователя с вложениями, ответы агента и `[Tool activity]`: изменённые, созданные и удалённые файлы, число команд, Task, MCP и поиск. Реплики без ответа и без действий агента пропускаются. Если у подписки кончился лимит, этап останавливается с ошибкой (код 3), а готовое остаётся в кэше.
   - `assemble` дописывает в дневные журналы `.memsearch/memory` только реплики, которых там ещё нет. Реплика опознаётся по метке `session:<id> turn:L<строка>`, а `turn:line-<строка>` ручного импорта тоже считается. В день без записей Cursor они ставятся в начало файла, иначе — в конец.
-  - затем `memsearch index` в коллекцию проекта (`derive-collection.sh` плагина).
+  - затем `memsearch index` в коллекцию проекта (`derive-collection.sh` плагина). Базу memsearch (Milvus Lite, `~/.memsearch/milvus.db`) одновременно открывает только один процесс. Пока её держит другой процесс (хуки memsearch в чате проекта), индексация ждёт и повторяет попытку каждые 5 секунд, всего до двух минут; мастер в это время пишет, что ждёт базу.
 
   Поэтому импорт можно повторять: он перескажет и допишет только то, что появилось в Cursor с прошлого раза. Мастер считает именно новые реплики (`count`). Работа платная и долгая; после закрытия мастера она продолжается. Пункт доступен, только если стоят плагин memsearch и его CLI. Тест скрипта: [`cursor_history_script_test.dart`](../test/integrations/cursor_history_script_test.dart) с поддельным `claude`.
 - **Темы.** Темы Cursor из `/Applications/Cursor.app/…/extensions/theme-cursor` упаковываются в `.vsix` (`ditto`) и ставятся как расширение.

@@ -3,7 +3,10 @@
 // indexed of a project, read in Milvus itself; and an indexing run, the
 // claude-context MCP server started and asked over stdio, held until it is
 // over. Never get_indexing_status: while indexing, it reports a false
-// "completed" (files = chunks).
+// "completed" (files = chunks). A run is followed by what its own server
+// logs (its progress, its end), not by the snapshot all the servers share:
+// any other one starting (a Claude Code session in the project) writes the
+// codebase there as failed ("interrupted"), with an old run's percentage.
 //
 //   node bao_index.js check <abs-path> [--json] [--server <json>]
 //   node bao_index.js index <abs-path> [--force] [--json] [--server <json>]
@@ -13,7 +16,7 @@
 // default ~/.claude.json's. With --json each line printed is a JSON object:
 //   {"event":"check", ...}      the index as it is (see check())
 //   {"event":"started"}         the server took index_codebase
-//   {"event":"progress", ...}   rows in Milvus, the snapshot's status
+//   {"event":"progress", ...}   rows in Milvus, the run's own percentage
 //   {"event":"done", ...}       over: the index as it is then
 //   {"event":"error","message"}
 // Exit codes: 0 complete / done, 1 incomplete or an error, 2 the server
@@ -216,12 +219,43 @@ function rpc(child) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/// What the server's own log says of its indexing run: its stderr's
+/// `[BACKGROUND-INDEX]` lines (claude-context-mcp's handlers.js).
+function followLog(child) {
+  const run = { percentage: null, phase: null, done: null, failed: null, last: [] };
+  let buffer = '';
+  child.stderr.on('data', (data) => {
+    buffer += data.toString('utf8');
+    let at;
+    while ((at = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, at).replace(/^\[LOG\]\s*/, '').trim();
+      buffer = buffer.slice(at + 1);
+      if (!line) continue;
+      run.last.push(line);
+      if (run.last.length > 20) run.last.shift();
+      let match;
+      if ((match = line.match(/\[BACKGROUND-INDEX\] Progress: (.*?) - ([\d.]+)%/))) {
+        run.phase = match[1];
+        run.percentage = Number(match[2]);
+      } else if ((match = line.match(/\[BACKGROUND-INDEX\] ✅ Indexing completed successfully! Files: (\d+), Chunks: (\d+)/))) {
+        run.done = { files: Number(match[1]), chunks: Number(match[2]) };
+      } else if ((match = line.match(/\[BACKGROUND-INDEX\] Indexing failed for .*?: (.*)$/))) {
+        run.failed = match[1];
+      } else if (/\[BACKGROUND-INDEX\] Indexing for .* was cancelled/.test(line)) {
+        run.failed = 'cancelled';
+      }
+    }
+  });
+  return run;
+}
+
 /// The server started as Claude Code starts it, spoken to over stdio.
 async function startServer(server) {
   const child = spawn(server.command, server.args ?? [], {
     env: { ...process.env, ...(server.env ?? {}) },
-    stdio: ['pipe', 'pipe', 'ignore'],
+    stdio: ['pipe', 'pipe', 'pipe'],
   });
+  const run = followLog(child);
   let exited = false;
   child.on('exit', () => {
     exited = true;
@@ -240,7 +274,7 @@ async function startServer(server) {
     clientInfo: { name: 'baocode', version: '1' },
   });
   mcp.notify('notifications/initialized', {});
-  return { mcp, stop, exited: () => exited };
+  return { mcp, stop, run, exited: () => exited };
 }
 
 /// The codebase's index dropped (clear_index).
@@ -257,36 +291,40 @@ async function clear(server) {
   process.exit(0);
 }
 
-/// An indexing run: the server asked to index, held until the snapshot
-/// says the indexer is done.
+/// An indexing run: the server asked to index, held until it logs that it
+/// is done (or failed, or it stops).
 async function index(server, client) {
-  const { mcp, stop, exited: hasExited } = await startServer(server);
+  const { mcp, stop, run, exited: hasExited } = await startServer(server);
   const answer = await mcp.request('tools/call', {
     name: 'index_codebase',
     arguments: { path: codebase, force },
   });
   const said = (answer?.content ?? []).map((part) => part.text ?? '').join('\n');
+  // Already indexed and nothing asked again: the server says so (as an
+  // error) and starts no run; what is there is checked.
+  if (!force && /already indexed/i.test(said)) {
+    stop();
+    return;
+  }
   if (answer?.isError) {
     stop();
     fail(said || 'index_codebase failed');
   }
   out('started', { message: said }, said);
   let last = null;
-  // Seen indexing in this run: then "completed" is the indexer's, as many
-  // files as chunks or not.
-  let sawIndexing = false;
   for (;;) {
-    await sleep(3000);
-    const snapshot = snapshotStatus(snapshotEntry());
-    if (snapshot?.status === 'indexing') sawIndexing = true;
-    if (snapshot?.status === 'completed' && (snapshot.honest || sawIndexing)) break;
-    if (snapshot && /fail|limit/.test(String(snapshot.status))) {
+    await sleep(1000);
+    if (run.done) break;
+    if (run.failed) {
       stop();
-      out('error', { message: `indexing ${snapshot.status}`, snapshot });
+      out('error', { message: run.failed });
       process.exit(1);
     }
     if (hasExited()) {
-      out('error', { message: 'the claude-context server stopped before indexing was done' });
+      out('error', {
+        message: 'the claude-context server stopped before indexing was done',
+        log: run.last.slice(-3),
+      });
       process.exit(2);
     }
     let rows = null;
@@ -296,10 +334,12 @@ async function index(server, client) {
     } catch {
       // The collection is being made.
     }
-    const key = `${rows}|${snapshot?.status}|${snapshot?.percentage}`;
+    // As the snapshot's shape, which the app reads: this run's own.
+    const snapshot = { status: 'indexing', percentage: run.percentage, phase: run.phase };
+    const key = `${rows}|${run.percentage}`;
     if (key !== last) {
       last = key;
-      out('progress', { rows, snapshot }, `rows in Milvus: ${rows}, ${snapshot?.status ?? '?'} ${snapshot?.percentage ?? ''}`);
+      out('progress', { rows, snapshot }, `rows in Milvus: ${rows}, ${run.phase ?? 'starting'} ${run.percentage ?? ''}`);
     }
   }
   stop();

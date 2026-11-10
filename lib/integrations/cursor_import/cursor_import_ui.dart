@@ -146,13 +146,22 @@ String? cursorImportProgress(BuildContext context, CursorImportJob job) {
   final fork = context.fork;
   final history = job.history;
   if (history != null && history.running) {
-    final stage = fork.cursorImportStage(history.stage.name);
+    final stage = cursorImportStageLabel(context, history);
     return history.stage == CursorHistoryStage.summarizing
         ? fork.cursorImportHistoryProgress(stage, history.done, history.total)
         : stage;
   }
   return fork.cursorImportStatusParts;
 }
+
+/// The conversations' import's stage in words: waiting, where memsearch's
+/// database is another process's.
+String cursorImportStageLabel(
+  BuildContext context,
+  CursorHistoryImport history,
+) => history.waitingForDatabase
+    ? context.fork.cursorImportWaitingDatabase
+    : context.fork.cursorImportStage(history.stage.name);
 
 /// The import's item in the status bar: how far it is while it goes on,
 /// how it ended until that is seen ([open] shows it); none otherwise.

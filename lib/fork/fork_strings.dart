@@ -205,6 +205,11 @@ class ForkStrings {
       _t('Needs the memsearch plugin and its CLI.', '需要 memsearch 插件及其命令行工具。');
   String cursorImportHistoryProgress(String stage, int done, int? total) =>
       _t('$stage: $done/${total ?? '?'}', '$stage：$done/${total ?? '?'}');
+  String get cursorImportWaitingDatabase => _t(
+    'Indexing the memory: waiting for memsearch\'s database, which another '
+        'process has open',
+    '正在索引记忆：等待 memsearch 数据库（被另一个进程占用）',
+  );
   String cursorImportStage(String stage) => switch (stage) {
     'copying' => _t('Copying the conversations', '正在复制对话'),
     'summarizing' => _t('Summarizing', '正在总结'),
