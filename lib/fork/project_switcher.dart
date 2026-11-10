@@ -94,7 +94,7 @@ abstract final class ProjectSwitcher {
           ),
         ),
         // Where it is, on the right, as a menu's keys are.
-        keybinding: _home(p.dirname(path)),
+        keybinding: shortPath(p.dirname(path)),
         onSelected: checked ? null : () => onOpen(path),
       );
     }
@@ -125,6 +125,22 @@ abstract final class ProjectSwitcher {
         ),
       ],
     ];
+  }
+
+  /// [path] as the dropdown shows it, on the right: under the home `~`,
+  /// and no longer than [max], its middle folders `…` (then its last one
+  /// cut), so a deep one does not widen the menu.
+  @visibleForTesting
+  static String shortPath(String path, {int max = 32}) {
+    final full = _home(path);
+    if (full.length <= max) return full;
+    final parts = full.split('/');
+    final head = parts.first.isEmpty ? '/${parts[1]}' : parts.first;
+    final last = parts.last;
+    final short = '$head/…/$last';
+    if (short.length <= max) return short;
+    final room = max - '$head/…/'.length - 1;
+    return '$head/…/${last.substring(0, room.clamp(1, last.length))}…';
   }
 
   static String _home(String path) {
@@ -242,7 +258,7 @@ class ProjectSwitchButton extends StatelessWidget {
                       style: TextStyle(
                         color: foreground,
                         fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),

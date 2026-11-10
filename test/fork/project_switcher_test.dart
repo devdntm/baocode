@@ -43,6 +43,23 @@ void main() {
     );
   });
 
+  test('a deep folder said short, so the dropdown keeps its width', () {
+    expect(ProjectSwitcher.shortPath('/p/b'), '/p/b');
+    final deep = [
+      '/opt/Application Support/Claude/scratch-workspaces',
+      '8a0ff420-f0b4-4221-a7b9-d85e315886a8',
+      'd70e93d0-dadb-4f02-b148-7a894c508040',
+    ].join('/');
+    final short = ProjectSwitcher.shortPath(deep);
+    expect(short.length, lessThanOrEqualTo(32));
+    expect(short, startsWith('/opt/…/d70e93d0'));
+    expect(short, endsWith('…'));
+    expect(
+      ProjectSwitcher.shortPath('/opt/a/b/c/d/e/f/g/h/i/j/k/zeekr_ru'),
+      '/opt/…/zeekr_ru',
+    );
+  });
+
   testWidgets('the pick: open and recent under their headings, the status '
       'said; one picked is opened', (tester) async {
     final opened = <String>[];
