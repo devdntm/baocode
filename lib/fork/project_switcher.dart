@@ -228,7 +228,8 @@ class ProjectSwitchButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = themeColors;
-    final foreground = colors.get('sideBar.foreground') ?? AppColors.text;
+    // The chat's text color (CursorType.text), not the side bar's.
+    final foreground = AppColors.text;
     return Align(
       alignment: Alignment.centerLeft,
       child: IdeHover(
