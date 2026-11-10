@@ -65,12 +65,30 @@ def prompt_file():
     return found[-1]
 
 
-def text_of(msg):
-    content = msg.get("message", {}).get("content", [])
+def content_of(msg):
+    """A message's blocks; Cursor leaves some without any (null)."""
+    message = msg.get("message")
+    content = message.get("content") if isinstance(message, dict) else None
     if isinstance(content, str):
-        return content
-    return "\n".join(b.get("text", "") for b in content
-                     if isinstance(b, dict) and b.get("type") == "text")
+        return [{"type": "text", "text": content}]
+    return [b for b in content if isinstance(b, dict)] if isinstance(content, list) else []
+
+
+def text_of(msg):
+    return "\n".join(b.get("text") or "" for b in content_of(msg)
+                     if b.get("type") == "text")
+
+
+def input_of(block):
+    """A tool's input: an object, else JSON text of one (Cursor writes some
+    so, cut short at times), else nothing."""
+    value = block.get("input")
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except ValueError:
+            return {}
+    return value if isinstance(value, dict) else {}
 
 
 def parse_ts(s):
@@ -120,6 +138,8 @@ def load_turns(path, root):
                 o = json.loads(line)
             except Exception:
                 continue
+            if not isinstance(o, dict):
+                continue
             role = o.get("role")
             if role == "user":
                 t = text_of(o)
@@ -139,18 +159,13 @@ def load_turns(path, root):
                 })
             elif role == "assistant" and turns:
                 turn = turns[-1]
-                content = (o.get("message") or {}).get("content") or []
-                if isinstance(content, str):
-                    content = [{"type": "text", "text": content}]
-                for b in content:
-                    if not isinstance(b, dict):
-                        continue
-                    if b.get("type") == "text" and b.get("text", "").strip():
+                for b in content_of(o):
+                    if b.get("type") == "text" and (b.get("text") or "").strip():
                         turn["parts"].append(f"[{AGENT}]: {b['text'].strip()}")
                         turn["answered"] = True
                     elif b.get("type") == "tool_use":
                         name = b.get("name")
-                        target = ((b.get("input") or {}).get("path") or "").replace(root + "/", "")
+                        target = str(input_of(b).get("path") or "").replace(root + "/", "")
                         if name in ("StrReplace", "StrictReplace", "Edit", "MultiEdit"):
                             turn["edited"].append(target)
                         elif name == "Write":

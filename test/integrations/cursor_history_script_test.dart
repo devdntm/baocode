@@ -45,7 +45,14 @@ void main() {
               'input': {'path': '$root/lib/a.dart'},
             },
             {'type': 'tool_use', 'name': 'Shell', 'input': <String, Object?>{}},
+            // As Cursor writes some: its input JSON text, cut short.
+            {'type': 'tool_use', 'name': 'Grep', 'input': '{"path": "'},
           ]),
+          // And a message with no content at all.
+          jsonEncode({
+            'role': 'assistant',
+            'message': {'content': null},
+          }),
           // No answer: nothing to tell.
           line('user', [
             text(

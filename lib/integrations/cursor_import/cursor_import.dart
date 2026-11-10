@@ -574,6 +574,16 @@ class CursorImportJob extends ChangeNotifier {
   static void forgetAll() => _jobs.clear();
 }
 
+/// A step of the conversations' import failed: what it said last.
+class CursorImportFailure implements Exception {
+  const CursorImportFailure(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 /// Where a history's import is.
 enum CursorHistoryStage {
   idle,
@@ -716,7 +726,16 @@ class CursorHistoryImport extends ChangeNotifier {
       ['-I', script, ...args],
       environment: {'CLAUDE_BIN': _claude()},
     );
-    unawaited(process.stderr.drain<void>());
+    // Its last words, where it fails: a traceback's are its error.
+    final errors = <String>[];
+    final stderr = process.stderr
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .where((line) => line.trim().isNotEmpty)
+        .forEach((line) {
+          errors.add(line);
+          if (errors.length > 20) errors.removeAt(0);
+        });
     final lines = <String>[];
     await for (final line
         in process.stdout
@@ -726,8 +745,12 @@ class CursorHistoryImport extends ChangeNotifier {
       onLine?.call(line);
     }
     final code = await process.exitCode;
+    await stderr;
     if (code != 0) {
-      throw StateError(lines.lastOrNull ?? 'exited with $code');
+      throw CursorImportFailure(
+        '${args.first}: '
+        '${errors.lastOrNull ?? lines.lastOrNull ?? 'exited with $code'}',
+      );
     }
     return lines;
   }

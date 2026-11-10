@@ -568,8 +568,7 @@ class _CursorImportDialogState extends State<CursorImportDialog> {
     return _note(
       [
         fork.cursorImportHistoryCost(history.total),
-        if (_importedBefore && history.total != 0)
-          fork.cursorImportHistoryDone,
+        if (_importedBefore && history.total != 0) fork.cursorImportHistoryDone,
       ].join(' '),
     );
   }
