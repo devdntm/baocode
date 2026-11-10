@@ -145,6 +145,12 @@ final Map<String, CommandInfo> commandCatalog = {
       'Open Recent...',
       category: 'File',
     ),
+    // fork: Switch Project (lib/fork/project_switcher.dart).
+    const CommandInfo(
+      'fork.switchProject',
+      'Switch Project...',
+      category: 'File',
+    ),
     const CommandInfo(
       'workbench.action.clearRecentlyOpened',
       'Clear Recently Opened...',
@@ -577,6 +583,13 @@ final List<KeybindingEntry> defaultKeybindings = List.unmodifiable([
     command: 'workbench.action.files.openFolder',
   ),
   const KeybindingEntry(key: 'ctrl+r', command: 'workbench.action.openRecent'),
+  // fork: in Cursor's layout ⌃R is Switch Project (lib/fork/
+  // project_switcher.dart): after Open Recent's, so it wins there.
+  const KeybindingEntry(
+    key: 'ctrl+r',
+    command: 'fork.switchProject',
+    when: 'fork.cursorLayout',
+  ),
   const KeybindingEntry(
     key: 'ctrl+k f',
     mac: 'cmd+k f',
@@ -930,6 +943,8 @@ const knownContextKeys = {
   ...chatContextKeys,
   'chatMode',
   'ideMode',
+  // fork: Cursor's layout (lib/fork/project_switcher.dart).
+  'fork.cursorLayout',
   'editorTextFocus',
   'editorFocus',
   'editorHasSelection',

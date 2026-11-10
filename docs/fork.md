@@ -86,9 +86,9 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/ide/ide_workbench.dart` | параметр `agents` (список чатов) и выбор сетки: `CursorWorkbenchGrid` при `workbench.ide.layout: cursor` |
 | `lib/ide/workbench/parts/activity_bar.dart` | параметр `axis`: иконки видов строкой над сайдбаром (`_row`); вертикальный код не тронут |
 | `lib/ide/ide_layout.dart` | `IdeLayoutToggle(mirrored:)`: иконки сайдбара и чата меняются сторонами |
-| `lib/ide/workbench/parts/title_bar.dart` | в раскладке Cursor тумблер списка чатов и тумблер чата слева, сайдбара справа |
+| `lib/ide/workbench/parts/title_bar.dart` | в раскладке Cursor тумблер списка чатов и тумблер чата слева, сайдбара справа; кнопка проекта `ProjectSwitchButton` (Switch Project) |
 | `lib/sidebar/sidebar.dart` | `Sidebar.projectMenuExtra` (пункты форка в меню проекта: индекс claude-context, Import from Cursor…); `SidebarGrouping.recent` (Pinned / Today / Last 7 days / Last 30 days / Older); параметры `project` (чаты одного проекта, без имени проекта в строках и без Open Project) и `grouping` (фиксированная группировка, без меню By …) |
-| `lib/workbench.dart` | `_ideAgentsBar`: список чатов проекта (`IdeAgentsBar`) для `IdeWorkbench.agents`; `PlanSessions.of` / `.created`: в какой беседе запускать задачи плана и новый агент для «Build in New Agent»; `_fileLinks`: ссылка на план открывает вкладку Plan (`planPageRequest`), `keepPlan` |
+| `lib/workbench.dart` | `_showProjectSwitcher` и команда `fork.switchProject` рядом с Open Recent; `_ideAgentsBar`: список чатов проекта (`IdeAgentsBar`) для `IdeWorkbench.agents`; `PlanSessions.of` / `.created`: в какой беседе запускать задачи плана и новый агент для «Build in New Agent»; `_fileLinks`: ссылка на план открывает вкладку Plan (`planPageRequest`), `keepPlan` |
 | `lib/chat/side_panel/side_panel_view.dart` | вкладка Plan есть всегда у локального проекта: `ProjectPlansPage` (список планов проекта) вокруг `_planPage`; `PlanContext` (беседа, проект) вокруг предпросмотра плана; «Save to Project» в меню вкладки плана; `tabs.plansListed` |
 | `lib/chat/side_panel/side_panel_controller.dart`, `side_panel_view.dart`, `lib/workbench.dart` | `SidePanelSection.browser`: раздел Browser (`BrowserMirror`), пока `ForkBrowser.offered`; `ForkBrowser.revealInPanel`, `ForkBrowserContribution.registerView` |
 | `lib/browser/browser_tools.dart`, `lib/browser/browser_steps.dart` | `ForkBrowser.used(tabId)` у инструментов; меню шага «Show in Browser Tab» |
@@ -116,6 +116,7 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/chat/composer/composer.dart` | `_minEditorHeight`: на строку ниже при `chat.look: cursor` |
 | `lib/chat/composer/composer_picker.dart` | `_buildPill`: режим — `CursorModePill` при `chat.look: cursor` |
 | `lib/chat/chat_screen.dart` | `_footUnder`: в IDE ветка и размер контекста под полем ввода; `RunCommandPanel` вместо `InteractionPanel` для вопроса approve-blocked |
+| `lib/keybindings/default_keybindings.dart` | `fork.switchProject` в каталоге команд; ⌃R → Switch Project при `fork.cursorLayout` (после Open Recent, поэтому в раскладке Cursor берётся он); ключ `fork.cursorLayout` среди известных |
 | `lib/chat/widgets/command_step.dart` | `CursorCommandCard` при `chat.look: cursor` |
 | `lib/kernel/claude_code/claude_code_kernel.dart` | `_requestContext`: размер контекста после каждого запроса модели (входные токены запроса), а не только в конце хода; разбивка по частям — от последнего полного подсчёта (`_fullContext`) |
 | `lib/chat/chat_session.dart` | `ForkBrowser.agentInBrowser`/`turnEnded` в `_apply` (страница браузера открывается сама); `RestoresCheckpoints`: `canRestoreAt`, `restoreCheckpoint`, `revertFilesFrom`, `restoredAt` (в `send` — с места чекпоинта); `ChangesReverted` перечитывает ревью |
@@ -385,6 +386,16 @@ Upstream убрал её из боковой панели в 1.9.0 (`b19154e8`, 
   окно показывает эту беседу — вкладку в IDE (`View: Open Browser`, фокус
   остаётся в поле ввода) или раздел боковой панели в окне агентов. Раз за
   ход: закрытая посреди хода, до следующего не появится.
+
+## Переключение проектов: Switch Project
+
+[`lib/fork/project_switcher.dart`](../lib/fork/project_switcher.dart). В раскладке Cursor слева в заголовке IDE стоит кнопка с именем проекта и стрелкой. Она, ⌃R и команда палитры «Switch Project...» открывают один список проектов:
+
+- сначала проекты, открытые в своих окнах: окно, которое было впереди последним, идёт первым;
+- затем недавние (`Workspace.recentFolders`); текущий проект в список не входит, каждый проект — один раз;
+- у каждого проекта — самое срочное состояние его чатов, как в сайдбаре: ждёт ответа, работает или закончил непрочитанным (`ThreadStatusMark` и подпись).
+
+Выбранный проект выводит вперёд своё окно, а если окна нет — открывается так же, как из Open Recent: на месте текущего, а с зажатым ⌘ — в новом окне (`_openIdeFolder`). Ключ контекста `fork.cursorLayout` выставляет `CursorLayoutContribution` по `workbench.ide.layout`. В обычной раскладке кнопки нет, а ⌃R остаётся Open Recent.
 
 ## Встроенная тема Cursor Dark Midnight
 

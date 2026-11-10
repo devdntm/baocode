@@ -170,6 +170,7 @@ import 'remote/port_forwards.dart';
 // fork: the browser's page (docs/fork.md).
 import 'fork/browser/browser_contribution.dart';
 import 'fork/browser/fork_browser.dart';
+import 'fork/project_switcher.dart';
 
 /// The window: the agents sidebar on the left, the selected agent's chat
 /// on the right, and up to three more beside it, dragged there from the
@@ -2126,6 +2127,14 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
               run: () => unawaited(_createWorkspace(inIde: true)),
             ),
           command('workbench.action.openRecent', _showOpenRecent),
+          // fork: Switch Project, the projects open and recent in one list
+          // (lib/fork/project_switcher.dart).
+          IdeCommand(
+            id: ProjectSwitcher.commandId,
+            category: 'File',
+            label: 'Switch Project...',
+            run: _showProjectSwitcher,
+          ),
           command(
             'workbench.action.clearRecentlyOpened',
             () => unawaited(_clearRecent()),
@@ -2346,6 +2355,31 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         matchOnDescription: true,
         sortByLabel: false,
         onDidAccept: (item) => item?.onAccept?.call(),
+      ),
+    );
+  }
+
+  /// fork: Switch Project: the projects in windows of their own (the one
+  /// last in front first), then the recent ones, each with what its agents
+  /// need; picked, as Open Recent's.
+  void _showProjectSwitcher() {
+    final ide = _ide;
+    if (ide == null) return;
+    final open = [
+      if (_windows case final windows? when _multi)
+        for (final window in windows.windows)
+          if (window.isIde && window.folder != null) window.folder!,
+    ];
+    ide.showQuickPick(
+      ProjectSwitcher.pick(
+        context,
+        projects: ProjectSwitcher.order(
+          current: _ideFolder == _noFolder ? null : _ideFolder,
+          open: open,
+          recent: _workspace.recentFolders,
+        ),
+        statusOf: (path) => ProjectSwitcher.statusIn(_workspace, path),
+        onOpen: (folder) => _openIdeFolder(folder, held: _newWindowHeld),
       ),
     );
   }

@@ -152,6 +152,12 @@ class ForkStrings {
     '建立索引的服务器在完成前已停止：请重新为整个项目建立索引。',
   );
 
+  // Switch Project (lib/fork/project_switcher.dart).
+  String get projectSwitcherOpen => _t('Open', '已打开');
+  String get projectSwitcherPlaceholder => _t('Switch to a project', '切换到项目');
+  String projectSwitcherTooltip(String name) =>
+      _t('$name: switch project', '$name：切换项目');
+
   // Import from Cursor (lib/integrations/cursor_import/).
   String get cursorImportTitle => _t('Import from Cursor', '从 Cursor 导入');
   String get cursorImportAction => _t('Import from Cursor…', '从 Cursor 导入…');

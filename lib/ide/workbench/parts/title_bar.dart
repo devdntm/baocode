@@ -18,6 +18,9 @@ import '../../ide_layout.dart';
 // fork: Cursor's layout has the chat's toggle on the left.
 import '../../cursor_layout/agents_bar.dart';
 import '../../cursor_layout/ide_layout_style.dart';
+import '../../../fork/fork_strings.dart';
+import '../../../fork/project_switcher.dart';
+import '../contributions.dart' show WorkbenchHost;
 import '../environment.dart';
 import '../../services/chat.dart';
 import '../../services/navigation_history.dart';
@@ -61,6 +64,25 @@ class TitleBarPart extends StatelessWidget {
             cursor
                 ? IdeLayoutToggle.chat(layout, mirrored: true)
                 : IdeLayoutToggle.sidebar(layout),
+            // fork: the project's button, Switch Project
+            // (lib/fork/project_switcher.dart).
+            if (cursor) ...[
+              const SizedBox(width: 6),
+              Flexible(
+                child: ProjectSwitchButton(
+                  name: options.workspace.hasFolder
+                      ? options.project.name
+                      : context.fork.projectSwitcherPlaceholder,
+                  tooltip: keys.titleWithKeybinding(
+                    context.fork.projectSwitcherTooltip(options.project.name),
+                    ProjectSwitcher.commandId,
+                  ),
+                  onPressed: () => services
+                      .find<WorkbenchHost>()
+                      ?.executeCommand(ProjectSwitcher.commandId),
+                ),
+              ),
+            ],
             const SizedBox(width: 12),
             Expanded(
               child: Center(

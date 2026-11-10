@@ -7,7 +7,9 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../fork/project_switcher.dart';
 import '../workbench/actions.dart';
+import '../workbench/context_keys.dart';
 import '../workbench/contributions.dart';
 import '../workbench/environment.dart';
 import '../workbench/services.dart';
@@ -20,6 +22,20 @@ class CursorLayoutContribution extends WorkbenchRegistrations {
     final environment = services.get<WorkbenchEnvironment>();
     final cursor = services.add(CursorLayoutService());
     final storage = services.get<WorkbenchStorage>();
+    // Whether the layout is Cursor's, for keybindings: ⌃R is Switch
+    // Project there (lib/fork/project_switcher.dart).
+    final layoutKey = services.get<ContextKeyService>().createKey<bool>(
+      ProjectSwitcher.layoutKey,
+      false,
+    );
+    void followLayout() => layoutKey.set(
+      IdeLayoutStyle.of(environment.settings) == IdeLayoutStyle.cursor,
+    );
+    followLayout();
+    if (environment.settings case final settings?) {
+      settings.addListener(followLayout);
+      add(() => settings.removeListener(followLayout));
+    }
     add(storage.register(cursor));
     cursor.addListener(storage.changed);
     add(() => cursor.removeListener(storage.changed));
