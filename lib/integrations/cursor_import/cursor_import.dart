@@ -681,9 +681,8 @@ class CursorHistoryImport extends ChangeNotifier {
             notifyListeners();
             return;
           }
-          final match = RegExp(
-            r'^progress (\d+)/(\d+) \(failed (\d+)\)',
-          ).firstMatch(line);
+          final match = RegExp(r'^progress (\d+)/(\d+) \(failed (\d+)\)')
+              .firstMatch(line);
           if (match == null) return;
           _done = int.parse(match[1]!);
           _total = int.parse(match[2]!);

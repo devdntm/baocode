@@ -113,11 +113,10 @@ class ClaudeContextReport {
 }
 
 /// Runs the helper with [args]: its JSON lines, each a map, as they come.
-typedef ClaudeContextRunner =
-    Stream<Map<String, Object?>> Function(
-      List<String> args,
-      Map<String, Object?> server,
-    );
+typedef ClaudeContextRunner = Stream<Map<String, Object?>> Function(
+  List<String> args,
+  Map<String, Object?> server,
+);
 
 /// A project's index: its state, what was found, a run's progress; one per
 /// project, shared by every window ([of]).
@@ -144,8 +143,9 @@ class ClaudeContextIndex extends ChangeNotifier {
 
   /// The claude-context server of the project at a path ([serverIn] in
   /// [store], by default); replaced under test.
-  static Future<Map<String, Object?>?> Function(String root) serverOf =
-      (root) => serverIn(store, root);
+  static Future<Map<String, Object?>?> Function(String root) serverOf = (
+    root,
+  ) => serverIn(store, root);
 
   /// The user's claude-context server, once found
   /// (findClaudeContextServer): the chat's sidebar's projects'.

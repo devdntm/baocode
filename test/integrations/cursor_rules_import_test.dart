@@ -184,9 +184,8 @@ void main() {
         'Mine.\n',
       );
       expect(
-        File(
-          p.join(root, '.claude', 'rules', 'db', 'sql.md'),
-        ).readAsStringSync(),
+        File(p.join(root, '.claude', 'rules', 'db', 'sql.md'))
+            .readAsStringSync(),
         startsWith('---\npaths:\n  - "**/*.sql"\n---'),
       );
 
@@ -208,9 +207,9 @@ void main() {
       );
 
       await project.importServers(project.servers.keys);
-      final mcp =
-          jsonDecode(File(p.join(root, '.mcp.json')).readAsStringSync())
-              as Map<String, Object?>;
+      final mcp = jsonDecode(
+        File(p.join(root, '.mcp.json')).readAsStringSync(),
+      ) as Map<String, Object?>;
       expect((mcp['mcpServers']! as Map).keys, containsAll(['web', 'db']));
       expect((mcp['mcpServers']! as Map)['web'], {
         'type': 'http',
@@ -291,9 +290,8 @@ void main() {
       // Its end seen here: the status bar has nothing to tell.
       expect(job.unseen, isFalse);
       expect(
-        File(
-          p.join(root, '.claude', 'skills', 'deploy', 'SKILL.md'),
-        ).existsSync(),
+        File(p.join(root, '.claude', 'skills', 'deploy', 'SKILL.md'))
+            .existsSync(),
         isTrue,
       );
       expect(

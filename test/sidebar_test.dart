@@ -1043,37 +1043,33 @@ void main() {
     expect(tester.getRect(find.byType(Sidebar)).right, 1400);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
-  testWidgets(
-    '⌘B hides and shows the sidebar',
-    (tester) async {
-      await pumpApp(tester);
-      expect(tester.getSize(find.byType(Sidebar)).width, 260);
-      final chatLeft = tester.getTopLeft(find.byType(ChatScreen)).dx;
-      // Its toggles have the IDE's layout icons, open or not.
-      IconData icon(String tooltip) => tester
-          .widget<SidebarIconButton>(
-            find.byWidgetPredicate(
-              (widget) =>
-                  widget is SidebarIconButton && widget.tooltip == tooltip,
-            ),
-          )
-          .icon;
-      expect(icon('Hide sidebar'), Codicons.layoutSidebarLeft);
+  testWidgets('⌘B hides and shows the sidebar', (tester) async {
+    await pumpApp(tester);
+    expect(tester.getSize(find.byType(Sidebar)).width, 260);
+    final chatLeft = tester.getTopLeft(find.byType(ChatScreen)).dx;
+    // Its toggles have the IDE's layout icons, open or not.
+    IconData icon(String tooltip) => tester
+        .widget<SidebarIconButton>(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is SidebarIconButton && widget.tooltip == tooltip,
+          ),
+        )
+        .icon;
+    expect(icon('Hide sidebar'), Codicons.layoutSidebarLeft);
 
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
-      await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
-      await tester.pumpAndSettle();
-      expect(tester.getTopLeft(find.byType(ChatScreen)).dx, lessThan(chatLeft));
-      expect(find.bySemanticsLabel('Show sidebar'), findsOneWidget);
-      expect(icon('Show sidebar'), Codicons.layoutSidebarLeftOff);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.byType(ChatScreen)).dx, lessThan(chatLeft));
+    expect(find.bySemanticsLabel('Show sidebar'), findsOneWidget);
+    expect(icon('Show sidebar'), Codicons.layoutSidebarLeftOff);
 
-      await tester.tap(find.bySemanticsLabel('Show sidebar'));
-      await tester.pumpAndSettle();
-      expect(tester.getTopLeft(find.byType(ChatScreen)).dx, chatLeft);
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
-  );
+    await tester.tap(find.bySemanticsLabel('Show sidebar'));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.byType(ChatScreen)).dx, chatLeft);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('drags the border to resize', (tester) async {
     await pumpApp(tester);
@@ -1257,55 +1253,47 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets(
-    'the pin keeps the window on top',
-    (tester) async {
-      final calls = <MethodCall>[];
-      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-        const MethodChannel('baocode/window'),
-        (call) async {
-          calls.add(call);
-          return null;
-        },
-      );
-      await pumpApp(tester);
-      final pin = find.byType(PinWindowButton);
-      // Left of the editor button.
-      expect(
-        tester.getTopRight(pin).dx,
-        lessThan(
-          tester.getTopLeft(find.bySemanticsLabel('Open in Fast Ide')).dx,
-        ),
-      );
+  testWidgets('the pin keeps the window on top', (tester) async {
+    final calls = <MethodCall>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('baocode/window'),
+      (call) async {
+        calls.add(call);
+        return null;
+      },
+    );
+    await pumpApp(tester);
+    final pin = find.byType(PinWindowButton);
+    // Left of the editor button.
+    expect(
+      tester.getTopRight(pin).dx,
+      lessThan(tester.getTopLeft(find.bySemanticsLabel('Open in Fast Ide')).dx),
+    );
 
-      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-      await mouse.addPointer(location: tester.getCenter(pin));
-      await tester.pump(const Duration(milliseconds: 600));
-      expect(find.text('Pin window on top'), findsOneWidget);
-      await mouse.removePointer();
-      await tester.pump(const Duration(milliseconds: 300));
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: tester.getCenter(pin));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Pin window on top'), findsOneWidget);
+    await mouse.removePointer();
+    await tester.pump(const Duration(milliseconds: 300));
 
-      // The pin's calls, the window's appearance aside.
-      Iterable<MethodCall> onTop() =>
-          calls.where((call) => call.method == 'setAlwaysOnTop');
-      await tester.tap(pin);
-      await tester.pump();
-      expect(onTop().single.arguments, isTrue);
-      expect(tester.widget<PinWindowButton>(pin).pinned, isTrue);
+    // The pin's calls, the window's appearance aside.
+    Iterable<MethodCall> onTop() =>
+        calls.where((call) => call.method == 'setAlwaysOnTop');
+    await tester.tap(pin);
+    await tester.pump();
+    expect(onTop().single.arguments, isTrue);
+    expect(tester.widget<PinWindowButton>(pin).pinned, isTrue);
 
-      // Stays pinned in another agent.
-      await tester.tap(
-        inSidebar(find.textContaining('Rate limit per API key')),
-      );
-      await tester.pump();
-      expect(tester.widget<PinWindowButton>(pin).pinned, isTrue);
-      await tester.tap(pin);
-      await tester.pump();
-      expect(onTop().last.arguments, isFalse);
-      await tester.pump(const Duration(seconds: 1));
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
-  );
+    // Stays pinned in another agent.
+    await tester.tap(inSidebar(find.textContaining('Rate limit per API key')));
+    await tester.pump();
+    expect(tester.widget<PinWindowButton>(pin).pinned, isTrue);
+    await tester.tap(pin);
+    await tester.pump();
+    expect(onTop().last.arguments, isFalse);
+    await tester.pump(const Duration(seconds: 1));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('the pin is disabled where the window cannot stay on top', (
     tester,
