@@ -45,6 +45,10 @@ cd - && git worktree remove --force ../baocode-merge-check
   источник конфликтов при слияниях.
 - **Новые настройки по умолчанию выключены.** Поведение upstream не меняется,
   всё включается в `settings.json` сборки BaoCode Dev.
+- **Форматирование — Dart проекта** (`~/flutter-3.47.5/bin/dart format`), не
+  `dart` из PATH: тот старее (3.8), раскладывает код иначе, и каждое такое
+  форматирование upstream-файла — лишние конфликты при слиянии. CI проверяет
+  формат изменённых файлов Dart'ом 3.13.
 - **Тесты форка** лежат рядом с фичей: `test/fork/`, `test/plan/`,
   `test/ide/cursor_layout/`, `test/integrations/`.
 
@@ -119,9 +123,8 @@ cd - && git worktree remove --force ../baocode-merge-check
 | `lib/sidebar/sidebar.dart` | параметр `topLeading`: виджет в начале верхнего ряда вместо пустого места (имя проекта в колонке чатов IDE); `_GroupHeader.onOpenIde`: на строке проекта при наведении кнопка «Open in Fast Ide» (`Editor.fastIde`) перед «…» и «+» |
 | `lib/keybindings/default_keybindings.dart` | `fork.switchProject` в каталоге команд; ⌃R → Switch Project при `fork.cursorLayout` (после Open Recent, поэтому в раскладке Cursor берётся он); ключ `fork.cursorLayout` среди известных |
 | `lib/chat/widgets/command_step.dart` | `CursorCommandCard` при `chat.look: cursor` |
-| `lib/kernel/claude_code/claude_code_kernel.dart` | `_requestContext`: размер контекста после каждого запроса модели (входные токены запроса), а не только в конце хода; разбивка по частям — от последнего полного подсчёта (`_fullContext`) |
 | `lib/chat/chat_session.dart` | `ForkBrowser.agentInBrowser`/`turnEnded` в `_apply` (страница браузера открывается сама); `RestoresCheckpoints`: `canRestoreAt`, `restoreCheckpoint`, `revertFilesFrom`, `restoredAt` (в `send` — с места чекпоинта); `ChangesReverted` перечитывает ревью |
-| `lib/chat/chat_history_view.dart` | `CheckpointHover` под сообщением, бледные строки после чекпоинта, вопрос в `_submitEdit` |
+| `lib/chat/chat_history_view.dart` | `CheckpointHover` под сообщением, бледные строки после чекпоинта |
 | `lib/chat/widgets/shell_highlight.dart` | `shellPrograms`: программы команды для заголовка карточки |
 | `lib/chat/step_folds.dart` | `isQuickStep`: команды не сворачиваются в «Ran N commands» при `chat.look: cursor` |
 | `lib/ide/workbench/parts/explorer_view.dart` | `PlanExplorerPane`: раздел Plans в Explorer |
@@ -344,8 +347,9 @@ CSS самого Cursor (`/Applications/Cursor.app/.../workbench.*.css`, `.rende
   этого сообщения (`rewind_files` Claude Code, правки его инструментов, не
   команд), сообщение и всё после него бледнеют; следующее сообщение идёт с
   этого места (`rewind_conversation`, как правка сообщения), «Keep the
-  conversation» снимает это. Правка старого сообщения с правками после него
-  спрашивает: «Revert and submit» / «Continue without reverting».
+  conversation» снимает это. Вопрос при повторной отправке отредактированного
+  сообщения — upstream (`askRewindFiles`, `ChatSession.rewindPlanAt`, с 1.9.3):
+  у форка был свой («Revert and submit»), при слиянии его убрали как дубль.
 - **Поле ввода** на строку ниже: текст сразу над кнопками. Режим (Agent, Ask,
   Plan) — круглая плашка цвета текста без рамки, надпись и иконка светлые
   ([`mode_pill.dart`](../lib/fork/mode_pill.dart), `ComposerPicker._buildPill`).

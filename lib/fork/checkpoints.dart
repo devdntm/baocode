@@ -1,8 +1,9 @@
 // Checkpoints as Cursor has them (`chat.look: cursor`, docs/fork.md): a
 // message of the user's puts the files back as they were before it was
 // sent ("Restore checkpoint"), the conversation after it dimmed, and
-// dropped as the next message is sent; a message edited and sent again
-// may put them back too. Claude Code keeps the files
+// dropped as the next message is sent. A message edited and sent again is
+// upstream's (askRewindFiles, ChatSession.rewindPlanAt), which asks the
+// same with its own merge. Claude Code keeps the files
 // (`CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING`) and puts them back
 // (`rewind_files`): what its tools edited, not what commands wrote.
 
@@ -25,7 +26,7 @@ abstract interface class RestoresCheckpoints {
   void restoreCheckpoint(int index);
 
   /// Puts the files back as before the message at [index], the
-  /// conversation left as it is (a message edited, sent again from there).
+  /// conversation left as it is ([restoreCheckpoint]'s first step).
   void revertFilesFrom(int index);
 
   /// The message the files were put back to: it and what follows show
@@ -177,30 +178,3 @@ class RestoredNote extends StatelessWidget {
     ),
   );
 }
-
-/// Sent again from an older message whose files changed after it: put
-/// them back first, or not, or neither (null).
-Future<bool?> askRevertOnResend(BuildContext context) => showDialog<bool>(
-  context: context,
-  builder: (context) => AlertDialog(
-    title: const Text('Submit from a previous message?'),
-    content: const Text(
-      'The agent changed files after this message. Put them back as they '
-      'were before it, or keep them as they are now.',
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
-      ),
-      TextButton(
-        onPressed: () => Navigator.pop(context, false),
-        child: const Text('Continue without reverting'),
-      ),
-      FilledButton(
-        onPressed: () => Navigator.pop(context, true),
-        child: const Text('Revert and submit'),
-      ),
-    ],
-  ),
-);

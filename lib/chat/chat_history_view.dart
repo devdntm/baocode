@@ -26,6 +26,7 @@ import 'chat_session.dart';
 import 'composer/composer.dart';
 import 'composer/composer_draft.dart';
 import 'reply_scroll.dart';
+import 'rewind_files_prompt.dart';
 import 'side_panel/file_link_menu.dart';
 import 'steadiness.dart';
 import 'step_folds.dart';
@@ -43,7 +44,6 @@ import 'widgets/user_message_bubble.dart';
 import '../base/safe_selection_indexes.dart';
 // fork: Cursor's checkpoints (docs/fork.md).
 import '../fork/checkpoints.dart';
-import '../fork/cursor_look.dart';
 
 /// Virtualized, selectable conversation history followed by the live turn.
 /// Sticks to the bottom while the user is there.
@@ -2104,8 +2104,9 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                                         initialImages: _editingImages,
                                         draft: _feed.editing?.draft,
                                         tapRegionGroupId: _editorTapRegion,
-                                        onSubmit: (message) =>
-                                            _submitEdit(index, message),
+                                        onSubmit: (message) => unawaited(
+                                          _submitEdit(index, message),
+                                        ),
                                         onCancel: _cancelEditing,
                                       ),
                               ),
@@ -2202,24 +2203,23 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     }
   }
 
-  void _submitEdit(int index, ComposerMessage message) {
-    // fork: chat.look, Cursor's: an older message with files changed after
-    // it asks whether to put them back first (lib/fork/checkpoints.dart).
-    if (_feed case final RestoresCheckpoints checkpoints
-        when ChatLook.isCursor && checkpoints.canRestoreAt(index)) {
-      unawaited(
-        askRevertOnResend(context).then((revert) {
-          if (revert == null || !mounted) return;
-          if (revert) checkpoints.revertFilesFrom(index);
-          _submitEdited(index, message);
-        }),
-      );
-      return;
-    }
-    _submitEdited(index, message);
-  }
+  /// Whether the edited message waits on whether the files go back.
+  bool _askingRewind = false;
 
-  void _submitEdited(int index, ComposerMessage message) {
+  Future<void> _submitEdit(int index, ComposerMessage message) async {
+    if (_askingRewind) return;
+    _askingRewind = true;
+    final feed = _feed;
+    final bool? revertFiles;
+    try {
+      revertFiles = feed is ChatSession
+          ? await askRewindFiles(context, () => feed.rewindPlanAt(index))
+          : false;
+    } finally {
+      _askingRewind = false;
+    }
+    // Turned down: still being edited.
+    if (revertFiles == null || !mounted || _editingIndex != index) return;
     _feed.editing = null;
     if (!_scrolledPast(index)) _animateItem(index);
     setState(() {
@@ -2230,7 +2230,16 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
       _foldOpen.removeWhere((key, _) => key.$2 > index);
       _unfoldedTurns.clear();
     });
-    _feed.editMessage(index, message, from: UserPlace.computer);
+    if (feed is ChatSession) {
+      feed.editMessage(
+        index,
+        message,
+        from: UserPlace.computer,
+        revertFiles: revertFiles,
+      );
+    } else {
+      feed.editMessage(index, message, from: UserPlace.computer);
+    }
   }
 
   /// Row [index] of the list: [child] in the column, [gap] below the row
@@ -2886,20 +2895,13 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                       onPointerPanZoomEnd: _endForwardedPan,
                     ),
                   ),
-                // Over the history's top right, as the editor's.
+                // Over the history's top right, as the editor's; over the
+                // side panel's rail too, where it floats there.
                 Positioned(
                   top: 0,
                   left: _gutter,
                   right: _gutter,
-                  child: Align(
-                    alignment: Alignment.topRight,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: IdeFindWidget.width,
-                      ),
-                      child: ChatFindBar(find: _find),
-                    ),
-                  ),
+                  child: _inset > 0 ? _OverRail(child: _findBar()) : _findBar(),
                 ),
               ],
             ),
@@ -2908,6 +2910,51 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
       ),
     );
   }
+
+  Widget _findBar() => Align(
+    alignment: Alignment.topRight,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: IdeFindWidget.width),
+      child: ChatFindBar(find: _find),
+    ),
+  );
+}
+
+/// [child] where it would be laid out, but in the overlay: over what floats
+/// over the chat (the side panel's rail, which is outside it).
+class _OverRail extends StatefulWidget {
+  const _OverRail({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_OverRail> createState() => _OverRailState();
+}
+
+class _OverRailState extends State<_OverRail> {
+  final _portal = OverlayPortalController()..show();
+
+  @override
+  Widget build(BuildContext context) => OverlayPortal.overlayChildLayoutBuilder(
+    controller: _portal,
+    overlayChildBuilder: (context, info) {
+      final rect = MatrixUtils.transformRect(
+        info.childPaintTransform,
+        Offset.zero & info.childSize,
+      );
+      return Stack(
+        children: [
+          Positioned(
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            child: widget.child,
+          ),
+        ],
+      );
+    },
+    child: const SizedBox(height: 0),
+  );
 }
 
 /// The conversation's side margin at [width]: roomy in a wide window, and
@@ -3394,22 +3441,38 @@ class _ChatSelectionDelegate extends StaticSelectionContainerDelegate
     _dragEnd = null;
     if (_reports++ >= 3) return;
     final healed = getSelectedContent()?.plainText.trim().isNotEmpty ?? false;
+    // What the text that holds it made of the drag done again.
+    final held = [
+      for (final (index, selectable) in selectables.indexed)
+        if (_holds(selectable, from) && _holds(selectable, to))
+          '#$index: ${selectable.value.status.name}, '
+              '${selectable.value.hasContent ? '' : 'no '}content, '
+              '${selectable.contentLength} long',
+    ];
     FlutterError.reportError(
       FlutterErrorDetails(
         exception: FlutterError(
           'A drag on text selected nothing '
-          '(${healed ? 'selected' : 'still nothing'} done again).\n$before',
+          '(${healed ? 'selected' : 'still nothing'} done again).\n'
+          'Dragged to ${_offset(to)}; held by ${held.join('; ')}.\n$before',
         ),
         library: 'chat selection',
       ),
     );
   }
 
+  // Rect's and Offset's own toString is not in a release build.
+  static String _offset(Offset offset) =>
+      '(${offset.dx.toStringAsFixed(1)}, ${offset.dy.toStringAsFixed(1)})';
+
+  static String _rect(Rect rect) =>
+      '${_offset(rect.topLeft)}-${_offset(rect.bottomRight)}';
+
   /// The list's text near [position], for the report: kinds and places
   /// only, none of the text.
   String _describeAround(Offset position) {
     final lines = [
-      'Pressed at $position; ${selectables.length} listed '
+      'Pressed at ${_offset(position)}; ${selectables.length} listed '
           '(${selectables.length - selectables.toSet().length} twice), '
           'edges at #$currentSelectionStartIndex, '
           '#$currentSelectionEndIndex.',
@@ -3425,7 +3488,7 @@ class _ChatSelectionDelegate extends StaticSelectionContainerDelegate
       lines.add(
         '#$index ${selectable.runtimeType} item ${_itemOf(selectable)}'
         '${_items.containsKey(selectable) ? '' : ' unregistered'} '
-        '${box ?? 'no box'}'
+        '${box == null ? 'no box' : _rect(box)}'
         '${box != null && box.contains(position) ? ' (holds it)' : ''}',
       );
       if (lines.length > 40) break;

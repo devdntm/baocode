@@ -617,12 +617,21 @@ class ModelProxy {
     final upstreamRequest = await client.postUrl(url);
     final key = await _key(provider.id);
     upstreamHeaders(provider, key).forEach(upstreamRequest.headers.set);
+    // OpenCode, told a session, sends it to a backend that refuses the
+    // cache's marks (`cache_control`); the one it is sent to untold refuses
+    // an empty list of tools (Claude Code's side requests).
+    final opencode = isOpenCode(provider);
     request.headers.forEach((name, values) {
       if (!_notPassed.contains(name) &&
-          !UsageHeaders.hintsOnly.contains(name)) {
+          !UsageHeaders.hintsOnly.contains(name) &&
+          !(opencode && openCodeUntold.contains(name))) {
         upstreamRequest.headers.set(name, values);
       }
     });
+    final tools = body['tools'];
+    final outgoing = opencode && tools is List && tools.isEmpty
+        ? ({...body}..remove('tools'))
+        : body;
     customUpstreamHeaders(
       provider,
       session: sessionId(
@@ -632,7 +641,7 @@ class ModelProxy {
       model: '${body['model'] ?? ''}',
     ).forEach(upstreamRequest.headers.set);
     upstreamRequest.headers.contentType = ContentType.json;
-    final (payload, encoded) = await _encodeJson(body);
+    final (payload, encoded) = await _encodeJson(outgoing);
     meter?.trace?.sending(
       method: 'POST',
       url: url,
@@ -970,16 +979,11 @@ class _ClientGone implements Exception {
   String toString() => 'Claude Code closed the connection';
 }
 
-/// About how many tokens [request]'s input comes to: a quarter of its
-/// text, as no upstream counts them.
-int estimateInputTokens(Map<String, Object?> request) {
-  final text = jsonEncode({
-    'system': request['system'],
-    'messages': request['messages'],
-    'tools': request['tools'],
-  });
-  return (utf8.encode(text).length / 4).ceil();
-}
+/// About how many tokens [request]'s input comes to, as no upstream counts
+/// them: as the usage counts a request's context ([analyzeRequest]), an
+/// image or a document as one, not its base64 as text.
+int estimateInputTokens(Map<String, Object?> request) =>
+    analyzeRequest(request, (_) => null).context?.total ?? 0;
 
 /// The header Claude Code names its session in on every request: what
 /// [sessionId] falls back on.
