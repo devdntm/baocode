@@ -17,6 +17,11 @@ git fetch upstream && git merge upstream/main
 Push в `upstream` отключён (`git remote set-url --push upstream DISABLED`), чтобы
 случайно не отправить туда коммиты форка. Работа идёт в `main`.
 
+Порядок слияния — скилл [`sync-upstream`](../.claude/skills/sync-upstream/SKILL.md):
+разведка (`scripts/survey.sh`: что пришло, какие файлы меняли обе стороны,
+форматирование форка), пробное слияние в worktree, дубли фич и конфликты,
+проверка тестами и сборкой, затем fast-forward `main`.
+
 Перед большим слиянием проверь его в отдельном worktree:
 
 ```sh
